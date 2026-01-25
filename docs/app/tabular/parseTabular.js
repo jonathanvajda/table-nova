@@ -3,17 +3,6 @@
  */
 
 /**
- * Resolve required global once at module load.
- * Throws early with a clear message if script order / globals are wrong.
- */
-const XLSX = /** @type {any} */ (globalThis).XLSX;
-if (!XLSX) {
-  throw new Error(
-    'Global XLSX not found. Ensure ./app/imports/xlsx.full.min.js is loaded BEFORE your module scripts (e.g., main.js). Expected globalThis.XLSX.'
-  );
-}
-
-/**
  * @typedef {'csv'|'tsv'|'xlsx'|'unknown'} TabularKind
  */
 
