@@ -8,6 +8,8 @@
 
 /**
  * Converts an arbitrary string into a URL-safe slug.
+ * - Treats dots as separators (e.g., "file.tar.gz" -> "file-tar-gz").
+ * - Collapses repeated separators.
  * @param {string} s
  * @returns {string}
  */
@@ -15,10 +17,12 @@ export function slugify(s) {
   return String(s ?? '')
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^[-.]+|[-.]+$/g, '') || 'file';
+    .replace(/\./g, '-')              // dot becomes separator
+    .replace(/\s+/g, '-')             // whitespace to separator
+    .replace(/[^a-z0-9_-]+/g, '-')    // drop everything else -> separator
+    .replace(/-+/g, '-')              // collapse runs
+    .replace(/^-+|-+$/g, '')          // trim separators
+    || 'file';
 }
 
 /**
