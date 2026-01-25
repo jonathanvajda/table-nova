@@ -426,7 +426,7 @@ async function init() {
   await refreshRunsList();
 
   // File selection in options panel
-  document.addEventListener('table-nova:selected-file-changed', () => {
+  document.addEventListener('tablenova:selected-file-changed', () => {
     renderFileOptionsPanel(dom.optionsPanel, stagedFiles, handleUpdateFileOptions, handlePreviewFile);
   });
 

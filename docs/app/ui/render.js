@@ -200,7 +200,7 @@ export function handleSelectFileChange(e, stagedFiles) {
 
   // Trigger a re-render by dispatching a custom event; main.js already re-renders on state updates,
   // but selection changes are local, so we re-render via bubbling event.
-  document.dispatchEvent(new CustomEvent('table-nova:selected-file-changed', { detail: { stagedId: id } }));
+  document.dispatchEvent(new CustomEvent('tablenova:selected-file-changed', { detail: { stagedId: id } }));
 }
 
 /**

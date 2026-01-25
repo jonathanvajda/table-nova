@@ -25,7 +25,7 @@ export function createLogger({ scope, enabled }) {
     if (!enabled) return;
     const payload = data ?? {};
     // eslint-disable-next-line no-console
-    console[level](`[table-nova:${scope}] ${event}`, payload);
+    console[level](`[tablenova:${scope}] ${event}`, payload);
   }
 
   return Object.freeze({

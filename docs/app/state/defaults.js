@@ -9,7 +9,7 @@ export const TABLENOVA_DEFAULTS = Object.freeze({
   baseRunIri: 'https://example.org/TableNova/run/',
 
   prefixes: {
-    table-nova: 'https://example.org/TableNova/ns#',
+    tablenova: 'https://example.org/TableNova/ns#',
     owid: 'https://example.org/TableNova/id/',
     xsd: 'http://www.w3.org/2001/XMLSchema#'
   },
