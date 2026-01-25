@@ -4,7 +4,7 @@ import {
   buildColumnKeys,
   buildPredicateLocalName,
   tokenizeWords
-} from '../app/rdf/schema.js';
+} from '../docs/app/rdf/schema.js';
 
 test('slugify creates safe slugs', () => {
   expect(slugify('My File (v1).csv')).toBe('my-file-v1-csv');

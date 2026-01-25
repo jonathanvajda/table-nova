@@ -1,4 +1,4 @@
-import { detectTabularType, parseLine, parseCsvOrTsvText, detectDelimiterFromLine } from '../app/tabular/parseTabular.js';
+import { detectTabularType, parseLine, parseCsvOrTsvText, detectDelimiterFromLine } from '../docs/app/tabular/parseTabular.js';
 
 test('detectTabularType detects extensions', () => {
   expect(detectTabularType('a.csv')).toBe('csv');
