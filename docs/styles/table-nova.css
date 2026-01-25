@@ -1,0 +1,320 @@
+/* Table Nova (table-nova-*) – fully scoped styles */
+
+.table-nova-header {
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  padding: 1.25rem 1rem;
+}
+
+.table-nova-header__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.table-nova-header__title {
+  margin: 0;
+  font-size: 1.6rem;
+  line-height: 1.2;
+}
+
+.table-nova-header__subtitle {
+  margin: 0.35rem 0 0;
+  color: rgba(0,0,0,0.65);
+}
+
+.table-nova-main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.table-nova-card {
+  border: 1px solid rgba(0,0,0,0.10);
+  border-radius: 14px;
+  padding: 1rem;
+  background: #fff;
+}
+
+.table-nova-card__title {
+  margin: 0 0 0.75rem;
+  font-size: 1.15rem;
+}
+
+.table-nova-section-title {
+  margin: 0.75rem 0 0.5rem;
+  font-size: 1rem;
+}
+
+.table-nova-muted {
+  color: rgba(0,0,0,0.65);
+}
+
+.table-nova-dropzone {
+  position: relative;
+  border: 2px dashed rgba(0,0,0,0.20);
+  border-radius: 14px;
+  padding: 1.1rem;
+  cursor: pointer;
+  outline: none;
+}
+
+.table-nova-dropzone:focus {
+  box-shadow: 0 0 0 3px rgba(0, 93, 255, 0.25);
+  border-color: rgba(0, 93, 255, 0.45);
+}
+
+.table-nova-dropzone--dragover {
+  border-color: rgba(0, 93, 255, 0.65);
+  background: rgba(0, 93, 255, 0.06);
+}
+
+.table-nova-dropzone__headline {
+  margin: 0;
+  font-weight: 600;
+}
+
+.table-nova-dropzone__hint {
+  margin: 0.35rem 0 0;
+  color: rgba(0,0,0,0.65);
+}
+
+.table-nova-dropzone__input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.table-nova-filelist,
+.table-nova-runlist {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.table-nova-fileitem,
+.table-nova-runitem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid rgba(0,0,0,0.10);
+  border-radius: 12px;
+  padding: 0.6rem 0.75rem;
+}
+
+.table-nova-fileitem__meta {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.table-nova-fileitem__name {
+  font-weight: 600;
+}
+
+.table-nova-fileitem__sub {
+  color: rgba(0,0,0,0.65);
+  font-size: 0.9rem;
+}
+
+.table-nova-actions,
+.table-nova-output-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.table-nova-btn {
+  border: 1px solid rgba(0,0,0,0.14);
+  border-radius: 12px;
+  padding: 0.55rem 0.85rem;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.table-nova-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.table-nova-btn--primary {
+  border-color: rgba(0, 93, 255, 0.35);
+  background: rgba(0, 93, 255, 0.12);
+  color: rgba(0,0,0,0.85);
+}
+
+.table-nova-btn--primary:not(:disabled) {
+  background: rgba(0, 93, 255, 0.90);
+  border-color: rgba(0, 93, 255, 0.90);
+  color: #fff;
+}
+
+.table-nova-btn--secondary {
+  background: rgba(0,0,0,0.04);
+}
+
+.table-nova-btn--tertiary {
+  background: rgba(0,0,0,0.02);
+}
+
+.table-nova-btn--icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+}
+
+.table-nova-options {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.table-nova-field {
+  display: grid;
+  gap: 0.35rem;
+  max-width: 520px;
+}
+
+.table-nova-label {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.table-nova-input,
+.table-nova-select {
+  border: 1px solid rgba(0,0,0,0.18);
+  border-radius: 12px;
+  padding: 0.55rem 0.65rem;
+  background: #fff;
+}
+
+.table-nova-checkboxrow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.table-nova-preview {
+  border: 1px solid rgba(0,0,0,0.10);
+  border-radius: 12px;
+  padding: 0.75rem;
+}
+
+.table-nova-preview__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.table-nova-preview__title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.table-nova-preview__body {
+  margin-top: 0.75rem;
+  overflow: auto;
+}
+
+.table-nova-tablewrap {
+  border: 1px solid rgba(0,0,0,0.10);
+  border-radius: 12px;
+  overflow: auto;
+  max-height: 420px;
+}
+
+.table-nova-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.table-nova-table th,
+.table-nova-table td {
+  padding: 0.6rem;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  vertical-align: top;
+  text-align: left;
+}
+
+.table-nova-table th {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  cursor: pointer;
+}
+
+.table-nova-textarea {
+  width: 100%;
+  min-height: 280px;
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 12px;
+  padding: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.92rem;
+  background: rgba(0,0,0,0.02);
+}
+
+.table-nova-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.table-nova-tab {
+  border: 1px solid rgba(0,0,0,0.14);
+  background: rgba(0,0,0,0.02);
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.table-nova-tab--active {
+  background: rgba(0, 93, 255, 0.12);
+  border-color: rgba(0, 93, 255, 0.35);
+}
+
+.table-nova-tabpanel {
+  display: none;
+}
+
+.table-nova-tabpanel--active {
+  display: block;
+}
+
+.table-nova-toasts {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  width: min(380px, calc(100vw - 2rem));
+  display: grid;
+  gap: 0.5rem;
+  z-index: 50;
+}
+
+.table-nova-toast {
+  border: 1px solid rgba(0,0,0,0.14);
+  border-radius: 14px;
+  padding: 0.75rem;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+}
+
+.table-nova-toast__title {
+  margin: 0;
+  font-weight: 800;
+}
+
+.table-nova-toast__body {
+  margin: 0.25rem 0 0;
+  color: rgba(0,0,0,0.75);
+}

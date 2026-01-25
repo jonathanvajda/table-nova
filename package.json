@@ -1,0 +1,14 @@
+{
+  "name": "table-nova",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:ci": "node --experimental-vm-modules node_modules/jest/bin/jest.js --ci",
+    "lint": "node -e \"console.log('No lint configured yet')\""
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

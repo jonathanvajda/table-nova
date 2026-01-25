@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Table Nova</title>
+  <link rel="stylesheet" href="styles/table-nova.css" />
+</head>
+
+<body>
+  <header class="table-nova-header">
+    <div class="table-nova-header__inner">
+      <h1 class="table-nova-header__title">Table Nova</h1>
+      <p class="table-nova-header__subtitle">Drop tabular files, generate RDF, and stash runs in IndexedDB.</p>
+    </div>
+  </header>
+
+  <main class="table-nova-main">
+    <section class="table-nova-card" aria-labelledby="table-nova-ingest-title">
+      <h2 id="table-nova-ingest-title" class="table-nova-card__title">Ingest</h2>
+
+      <div class="table-nova-dropzone" id="TableNovaDropzone" role="button" tabindex="0" aria-label="Drop a file here or click to select">
+        <div class="table-nova-dropzone__inner">
+          <p class="table-nova-dropzone__headline">Drag &amp; drop a CSV, TSV, or Excel file</p>
+          <p class="table-nova-dropzone__hint">…or click to choose a file.</p>
+        </div>
+        <input id="TableNovaFileInput" class="table-nova-dropzone__input" type="file" accept=".csv,.tsv,.txt,.xlsx,.xls" />
+      </div>
+
+      <div class="table-nova-staging" aria-live="polite">
+        <h3 class="table-nova-section-title">Staging area</h3>
+        <ul class="table-nova-filelist" id="TableNovaFileList" aria-label="Staged files"></ul>
+      </div>
+
+      <div class="table-nova-actions">
+        <button id="TableNovaRunBtn" class="table-nova-btn table-nova-btn--primary" type="button" disabled>RUN</button>
+        <button id="TableNovaClearBtn" class="table-nova-btn table-nova-btn--secondary" type="button">Clear staged</button>
+      </div>
+    </section>
+
+    <section class="table-nova-card" aria-labelledby="table-nova-options-title">
+      <h2 id="table-nova-options-title" class="table-nova-card__title">Options (per file)</h2>
+
+      <div class="table-nova-options" id="TableNovaOptionsPanel">
+        <p class="table-nova-muted">Add a file to configure preview, header handling, predicate casing, and datatypes.</p>
+      </div>
+    </section>
+
+    <section class="table-nova-card" aria-labelledby="table-nova-output-title">
+      <h2 id="table-nova-output-title" class="table-nova-card__title">Output</h2>
+
+      <nav class="table-nova-tabs" aria-label="Output tabs">
+        <button class="table-nova-tab table-nova-tab--active" type="button" data-tab="turtle">Turtle</button>
+        <button class="table-nova-tab" type="button" data-tab="ntriples">N-Triples</button>
+        <button class="table-nova-tab" type="button" data-tab="jsonld">JSON-LD</button>
+        <button class="table-nova-tab" type="button" data-tab="session">Session Data</button>
+      </nav>
+
+      <div class="table-nova-tabpanels">
+        <section class="table-nova-tabpanel table-nova-tabpanel--active" data-panel="turtle">
+          <div class="table-nova-output-actions">
+            <button id="TableNovaExportTurtleBtn" class="table-nova-btn table-nova-btn--tertiary" type="button">Export Turtle</button>
+            <button id="TableNovaExportTrigBtn" class="table-nova-btn table-nova-btn--tertiary" type="button">Export TriG</button>
+          </div>
+          <label class="table-nova-label" for="TableNovaTurtleText">Turtle</label>
+          <textarea id="TableNovaTurtleText" class="table-nova-textarea" spellcheck="false" readonly></textarea>
+        </section>
+
+        <section class="table-nova-tabpanel" data-panel="ntriples">
+          <div class="table-nova-output-actions">
+            <button id="TableNovaExportNTriplesBtn" class="table-nova-btn table-nova-btn--tertiary" type="button">Export N-Triples</button>
+            <button id="TableNovaExportNQuadsBtn" class="table-nova-btn table-nova-btn--tertiary" type="button">Export Quads</button>
+          </div>
+
+          <div class="table-nova-tabletools">
+            <div class="table-nova-field">
+              <label class="table-nova-label" for="TableNovaQuadFilter">Filter</label>
+              <input id="TableNovaQuadFilter" class="table-nova-input" type="text" placeholder="Type to filter S/P/O/G…" />
+            </div>
+          </div>
+
+          <div class="table-nova-tablewrap" role="region" aria-label="N-Triples table" tabindex="0">
+            <table class="table-nova-table" id="TableNovaQuadTable">
+              <thead>
+                <tr>
+                  <th data-sort="s" scope="col">subject</th>
+                  <th data-sort="p" scope="col">predicate</th>
+                  <th data-sort="o" scope="col">object</th>
+                  <th data-sort="g" scope="col">graph</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="table-nova-tabpanel" data-panel="jsonld">
+          <div class="table-nova-output-actions">
+            <button id="TableNovaExportJsonLdTriplesBtn" class="table-nova-btn table-nova-btn--tertiary" type="button">Export JSON-LD triples</button>
+            <button id="TableNovaExportJsonLdGraphBtn" class="table-nova-btn table-nova-btn--tertiary" type="button">Export JSON-LD Named Graph</button>
+          </div>
+          <label class="table-nova-label" for="TableNovaJsonLdText">JSON-LD</label>
+          <textarea id="TableNovaJsonLdText" class="table-nova-textarea" spellcheck="false" readonly></textarea>
+        </section>
+
+        <section class="table-nova-tabpanel" data-panel="session">
+          <p class="table-nova-muted">Runs stored in IndexedDB (named graphs):</p>
+          <ul class="table-nova-runlist" id="TableNovaRunList" aria-label="Stored runs"></ul>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <aside class="table-nova-toasts" id="TableNovaToasts" aria-live="polite" aria-relevant="additions"></aside>
+
+  <!-- Browser ESM imports via CDN -->
+  <script type="module" src="./app/main.js"></script>
+</body>
+</html>
