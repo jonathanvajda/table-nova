@@ -302,7 +302,7 @@ export function buildPredicateOptions(staged, onUpdateOptions) {
     { value: 'camelCase', text: 'camelCase' },
     { value: 'PascalCase', text: 'PascalCase' },
     { value: 'snake_case', text: 'snake_case' },
-    { value: 'SHOUTCASE', text: 'SHOUTCASE' }
+    { value: 'SHOUT_CASE', text: 'SHOUT_CASE' }
   ];
 
   for (const opt of options) {

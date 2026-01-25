@@ -134,7 +134,7 @@ export function buildPredicateLocalName(columnKey, predicateOptions) {
   const tokens = tokenizeWords(phrase);
 
   if (casing === 'snake_case') return tokens.map((t) => t.toLowerCase()).join('_');
-  if (casing === 'SHOUTCASE') return tokens.map((t) => t.toUpperCase()).join('_');
+  if (casing === 'SHOUT_CASE') return tokens.map((t) => t.toUpperCase()).join('_');
   if (casing === 'PascalCase') return tokens.map(capitalize).join('');
   // default camelCase
   return tokens.length === 0 ? 'hasValue' : [tokens[0].toLowerCase(), ...tokens.slice(1).map(capitalize)].join('');

@@ -4,13 +4,13 @@
 
 export const TABLENOVA_DEFAULTS = Object.freeze({
   // Swap these bases later when you have a real domain.
-  baseInstanceIri: 'https://example.org/TableNova/id/',
-  basePredicateIri: 'https://example.org/TableNova/ns#',
-  baseRunIri: 'https://example.org/TableNova/run/',
+  baseInstanceIri: 'https://example.org/TableNova/instance#',
+  basePredicateIri: 'https://example.org/TableNova/',
+  baseRunIri: 'https://example.org/TableNova/run#',
 
   prefixes: {
-    tablenova: 'https://example.org/TableNova/ns#',
-    owid: 'https://example.org/TableNova/id/',
+    tablenova: 'https://example.org/TableNova/',
+    tablenovaid: 'https://example.org/TableNova/instance#',
     xsd: 'http://www.w3.org/2001/XMLSchema#'
   },
 
@@ -19,7 +19,7 @@ export const TABLENOVA_DEFAULTS = Object.freeze({
     delimiterHint: null, // ',' or '\t' or null (auto)
     predicate: {
       prefixHas: true,
-      casing: 'camelCase', // camelCase | PascalCase | snake_case | SHOUTCASE
+      casing: 'camelCase', // camelCase | PascalCase | snake_case | SHOUT_CASE
       whenNoHeader: 'ordinal' // ordinal (A,B,AA...) or index (1..n) - MVP uses ordinal
     },
     // preview cached after user clicks Preview

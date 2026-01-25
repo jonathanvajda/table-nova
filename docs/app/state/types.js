@@ -3,7 +3,7 @@
  */
 
 /**
- * @typedef {'camelCase'|'PascalCase'|'snake_case'|'SHOUTCASE'} PredicateCasing
+ * @typedef {'camelCase'|'PascalCase'|'snake_case'|'SHOUT_CASE'} PredicateCasing
  */
 
 /**

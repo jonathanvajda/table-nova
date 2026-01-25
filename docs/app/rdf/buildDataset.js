@@ -42,7 +42,6 @@ export async function buildDatasetFromTabular({
   buildRowInstanceIri,
   buildLiteralObject
 }) {
-  const N3 = await getN3();
   const { DataFactory, Store } = N3;
 
   const store = new Store();
@@ -106,7 +105,6 @@ export async function buildDatasetFromTabular({
  * @returns {Promise<{dataset: any}>}
  */
 export async function datasetFromQuads(records) {
-  const N3 = await getN3();
   const { DataFactory, Store } = N3;
 
   const store = new Store();
@@ -123,14 +121,4 @@ export async function datasetFromQuads(records) {
   }
 
   return { dataset: store };
-}
-
-/**
- * Loads N3 via esm.sh (pinned), cached.
- * @returns {Promise<any>}
- */
-async function getN3() {
-  if (_n3Mod) return _n3Mod;
-  _n3Mod = await import('https://esm.sh/n3@2.0.1');
-  return _n3Mod;
 }
