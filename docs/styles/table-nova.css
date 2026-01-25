@@ -318,3 +318,116 @@
   margin: 0.25rem 0 0;
   color: rgba(0,0,0,0.75);
 }
+
+/* ------------------------------------------------------------------ */
+/* Table Nova + Skeleton compatibility layer (place LAST in your CSS)  */
+/* ------------------------------------------------------------------ */
+
+:where(.table-nova-header, .table-nova-main) {
+  font-size: 16px;          /* bump base size inside the app */
+  line-height: 1.45;
+  color: rgba(0, 0, 0, 0.92);
+}
+
+/* Header typography: Skeleton can make this feel small */
+.table-nova-header__title {
+  font-size: 2.0rem;
+  line-height: 1.15;
+}
+
+.table-nova-header__subtitle {
+  font-size: 1.0rem;
+  line-height: 1.35;
+}
+
+/* Card titles / section labels: keep readable */
+.table-nova-card__title {
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.table-nova-section-title {
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+/* Skeleton’s button styling (height/line-height/uppercase/letter-spacing)
+   is the main cause of vertical “off” alignment. Force consistent metrics. */
+.table-nova-main .table-nova-btn,
+.table-nova-main button.table-nova-btn,
+.table-nova-main a.table-nova-btn {
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.1;
+  height: auto;                /* override Skeleton’s fixed height */
+  text-transform: none;        /* override Skeleton’s uppercase */
+  letter-spacing: normal;      /* override Skeleton’s letter spacing */
+  display: inline-flex;        /* fixes baseline alignment */
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  min-height: 2.5rem;          /* consistent height across buttons */
+  padding: 0.6rem 0.9rem;      /* slightly more comfortable */
+}
+
+/* Icon button alignment */
+.table-nova-main .table-nova-btn--icon {
+  min-height: 2.25rem;
+  min-width: 2.25rem;
+  padding: 0;
+  line-height: 1;
+}
+
+/* If you have any “plain” buttons inside the app that *don’t* have
+   .table-nova-btn (e.g., Refresh Preview), bring them into line. */
+.table-nova-main button:not(.table-nova-btn),
+.table-nova-main .button:not(.table-nova-btn) {
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.1;
+  height: auto;
+  text-transform: none;
+  letter-spacing: normal;
+  border-radius: 12px;
+}
+
+/* Inputs/selects can also inherit Skeleton’s smaller font sizing */
+.table-nova-main .table-nova-input,
+.table-nova-main .table-nova-select,
+.table-nova-main .table-nova-textarea {
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+/* Make “sub” text less tiny under the new baseline */
+.table-nova-fileitem__sub {
+  font-size: 0.95rem;
+}
+
+/* Table readability */
+.table-nova-table {
+  font-size: 1rem;
+}
+
+.table-nova-table th {
+  font-size: 0.95rem;
+  letter-spacing: normal;   /* if any upstream CSS adds it */
+  text-transform: none;
+}
+
+/* Dropdowns in the preview table: keep them readable */
+.table-nova-table select,
+.table-nova-preview select {
+  font-size: 1rem;
+  line-height: 1.2;
+  height: auto;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* Checkbox sizing can feel small with Skeleton */
+.table-nova-checkboxrow input[type="checkbox"] {
+  width: 1.05rem;
+  height: 1.05rem;
+}
