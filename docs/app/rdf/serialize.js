@@ -2,8 +2,29 @@
  * @file Serialize RDFJS datasets into Turtle/TriG/N-Triples/N-Quads/JSON-LD.
  */
 
-let _n3Mod = null;
-let _jsonldMod = null;
+/**
+ * Resolve required globals once at module load.
+ * Throws early with a clear message if script order / globals are wrong.
+ */
+const N3 = /** @type {any} */ (globalThis).N3;
+if (!N3) {
+  throw new Error(
+    'Global N3 not found. Ensure ./app/imports/n3.min.js is loaded BEFORE your module scripts (e.g., main.js). Expected globalThis.N3.'
+  );
+}
+
+const JSONLD = /** @type {any} */ (globalThis).jsonld;
+if (!JSONLD) {
+  throw new Error(
+    'Global jsonld not found. Ensure ./app/imports/jsonld.min.js is loaded BEFORE your module scripts (e.g., main.js). Expected globalThis.jsonld.'
+  );
+}
+
+if (typeof JSONLD.fromRDF !== 'function') {
+  throw new Error(
+    'Global jsonld.fromRDF is not a function. Your jsonld.min.js build may not expose fromRDF(). Use a jsonld build that attaches globalThis.jsonld with fromRDF().'
+  );
+}
 
 /**
  * Serializes a dataset into multiple syntaxes.
@@ -22,8 +43,7 @@ let _jsonldMod = null;
  * }>}
  */
 export async function datasetToSerializations({ dataset, graphIri, prefixes }) {
-  const N3 = await getN3();
-  const { Writer, DataFactory, Store } = N3;
+  const { DataFactory, Store } = N3;
 
   // Split into "triples view" (default graph) vs "graph view" (named graph).
   const quads = dataset.getQuads(null, null, null, null);
@@ -39,7 +59,6 @@ export async function datasetToSerializations({ dataset, graphIri, prefixes }) {
   const trig = await writeWithN3(dataset, { format: 'application/trig', prefixes });
   const nquads = await writeWithN3(dataset, { format: 'N-Quads' });
 
-  // JSON-LD via jsonld.fromRDF(N-Quads)
   const jsonldTriples = await rdfToJsonLd(ntriples, false);
   const jsonldGraph = await rdfToJsonLd(nquads, true, graphIri);
 
@@ -53,9 +72,8 @@ export async function datasetToSerializations({ dataset, graphIri, prefixes }) {
  * @returns {Promise<string>}
  */
 export function writeWithN3(store, options) {
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     try {
-      const N3 = await getN3();
       const writer = new N3.Writer({ format: options.format, prefixes: options.prefixes });
       writer.addQuads(store.getQuads(null, null, null, null));
       writer.end((err, result) => (err ? reject(err) : resolve(String(result || ''))));
@@ -73,9 +91,8 @@ export function writeWithN3(store, options) {
  * @returns {Promise<string>}
  */
 export async function rdfToJsonLd(nquadsOrNtriples, isDataset, graphIri) {
-  const jsonld = await getJsonld();
   // jsonld.fromRDF expects N-Quads. For N-Triples, it still works (subset).
-  const doc = await jsonld.fromRDF(String(nquadsOrNtriples || ''), { format: 'application/n-quads' });
+  const doc = await JSONLD.fromRDF(String(nquadsOrNtriples || ''), { format: 'application/n-quads' });
 
   if (!isDataset) {
     return JSON.stringify(doc, null, 2);
@@ -88,24 +105,4 @@ export async function rdfToJsonLd(nquadsOrNtriples, isDataset, graphIri) {
     '@graph': doc
   };
   return JSON.stringify(named, null, 2);
-}
-
-/**
- * Loads N3 via esm.sh (pinned), cached.
- * @returns {Promise<any>}
- */
-async function getN3() {
-  if (_n3Mod) return _n3Mod;
-  _n3Mod = await import('https://esm.sh/n3@2.0.1');
-  return _n3Mod;
-}
-
-/**
- * Loads jsonld via esm.sh (pinned), cached.
- * @returns {Promise<any>}
- */
-async function getJsonld() {
-  if (_jsonldMod) return _jsonldMod;
-  _jsonldMod = await import('https://esm.sh/jsonld@9.0.0');
-  return _jsonldMod;
 }

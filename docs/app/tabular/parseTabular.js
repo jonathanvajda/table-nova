@@ -3,6 +3,17 @@
  */
 
 /**
+ * Resolve required global once at module load.
+ * Throws early with a clear message if script order / globals are wrong.
+ */
+const XLSX = /** @type {any} */ (globalThis).XLSX;
+if (!XLSX) {
+  throw new Error(
+    'Global XLSX not found. Ensure ./app/imports/xlsx.full.min.js is loaded BEFORE your module scripts (e.g., main.js). Expected globalThis.XLSX.'
+  );
+}
+
+/**
  * @typedef {'csv'|'tsv'|'xlsx'|'unknown'} TabularKind
  */
 
@@ -115,15 +126,13 @@ export function normalizeRow(row) {
   return (row || []).map((c) => String(c ?? '').trim());
 }
 
-let _xlsxMod = null;
-
 /**
  * Parses an XLSX ArrayBuffer into TabularData (first sheet, first row as header candidate).
  * @param {ArrayBuffer} buf
  * @returns {Promise<TabularData>}
  */
 export async function parseXlsxArrayBuffer(buf) {
-  const XLSX = await getXlsx();
+  // XLSX is already resolved globally at module load; this stays async for API compatibility.
   const wb = XLSX.read(buf, { type: 'array' });
 
   const sheetName = wb.SheetNames?.[0];
@@ -138,15 +147,4 @@ export async function parseXlsxArrayBuffer(buf) {
   const header = all[0];
   const rows = all.slice(1);
   return { header, rows };
-}
-
-/**
- * Loads SheetJS (xlsx) via esm.sh, cached.
- * @returns {Promise<any>}
- */
-async function getXlsx() {
-  if (_xlsxMod) return _xlsxMod;
-  // Pinned for reproducibility.
-  _xlsxMod = await import('https://esm.sh/xlsx@0.18.5');
-  return _xlsxMod;
 }
