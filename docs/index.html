@@ -6,18 +6,23 @@
   <title>Table Nova</title>
   <link rel="stylesheet" href="styles/normalize.css" />
   <link rel="stylesheet" href="styles/skeleton.css" />
+  <link rel="stylesheet" href="styles/app-base.css" />
+  <link rel="stylesheet" href="styles/site-header.css" />
   <link rel="stylesheet" href="styles/table-nova.css" />
 </head>
 
-<body>
-  <header class="table-nova-header">
-    <div class="table-nova-header__inner">
-      <h1 class="table-nova-header__title">Table Nova</h1>
-      <p class="table-nova-header__subtitle">Drop tabular files, generate RDF, and stash runs in IndexedDB.</p>
-    </div>
+<body data-page-id="table-nova">
+
+  <header id="siteHeader" class="sitehdr-root table-nova-header" role="banner" aria-label="Site header">
+    
   </header>
 
   <main class="table-nova-main">
+      <div class="table-nova-header__inner">
+      <h1 class="table-nova-header__title">Table Nova</h1>
+      <p class="table-nova-header__subtitle">Drop tabular files, generate RDF, and stash runs in IndexedDB.</p>
+    </div>
+
     <section class="table-nova-card" aria-labelledby="table-nova-ingest-title">
       <h2 id="table-nova-ingest-title" class="table-nova-card__title">Ingest</h2>
 
@@ -115,9 +120,12 @@
 
   <aside class="table-nova-toasts" id="TableNovaToasts" aria-live="polite" aria-relevant="additions"></aside>
 
+  <!-- CDN -->
   <script src="./app/imports/n3.min.js"></script>
   <script src="./app/imports/jsonld.min.js"></script>
   <script src="./app/imports/xlsx.full.min.js"></script>
+
+  <script src="./app/site-header.js"></script>
 
   <!-- Browser ESM imports via CDN -->
   <script type="module" src="./app/main.js"></script>
