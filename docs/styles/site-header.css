@@ -1,0 +1,155 @@
+/* ============================
+   Header (sitehdr-*) using vars
+   ============================ */
+
+.sitehdr-root {
+  width: 100%;
+  font-family: var(--ont-font-body, system-ui);
+  color: var(--ont-text, #111);
+}
+
+.sitehdr {
+  border-bottom: 1px solid var(--ont-border, rgba(0,0,0,0.10));
+  background: var(--ont-panel-bg, #fff);
+}
+
+/* One banner row */
+.sitehdr-bar {
+  width: 98%;
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--ont-gap, 1rem);
+
+  flex-wrap: nowrap;   /* keep menu to the right on wide screens */
+
+  background-color: var(--ont-panel-bg, #fff);
+}
+
+/* Left: main logo */
+.sitehdr-brand {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: flex-start;
+  text-decoration: none;
+  color: inherit;
+}
+
+.sitehdr-brand__main {
+  display: inline-flex;
+  height: 160px;   /* adjust to taste */
+  width: auto;
+}
+
+/* Next: tool logo */
+.sitehdr-tool {
+  flex: 0 0 auto;
+  min-width: 160px;
+  display: inline-flex;
+
+  align-items: flex-start;
+  justify-content: flex-start;
+
+  background: var(--ont-panel-bg, #fff);
+  color: inherit;
+}
+
+.sitehdr-tool__img {
+  display: inline-flex;
+  height: 160px;   /* match main logo height */
+  width: auto;
+}
+
+.sitehdr-tool__title {
+  align-content: center;
+  height: 160px;   /* match main logo height */
+  width: auto;
+
+  font-size: 5rem;
+  font-weight: 650;
+  padding-right: 5rem;
+
+  color: var(--ont-text, #111);
+}
+
+/* Right: section columns container */
+.sitehdr-sections {
+  flex: 1 1 auto;    /* take remaining width */
+  min-height: 160px;
+  min-width: 0;      /* allow shrinking instead of forcing wrap below */
+
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(180px, max-content);
+  gap: calc(var(--ont-gap, 1rem) * 1.5);
+
+  overflow-x: auto;  /* if too many sections, scroll horizontally */
+  padding-bottom: 0rem;
+}
+
+/* Each section column */
+.sitehdr-section__title {
+  margin: 0 0 0.35rem;
+  font-size: 1.9rem;
+  font-weight: 650;
+  opacity: 0.90;
+  white-space: nowrap;
+
+  color: var(--ont-text, #111);
+}
+
+.sitehdr-section__list {
+  list-style: none;
+  margin: 0;
+  margin-left: 0.5rem;
+  margin-bottom: -0.5rem;
+  padding: 0;
+
+  display: grid;
+  gap: 0rem;
+}
+
+.sitehdr-section__list li {
+  margin-bottom: -0.25rem;
+}
+
+/* Links */
+.sitehdr-link {
+  text-decoration: none;
+  color: var(--ont-text, #111);
+
+  display: inline-block;
+  font-size: 1.5rem;
+  padding: 0.1rem 0;
+  border-radius: var(--ont-radius, 6px);
+  outline: none;
+}
+
+.sitehdr-link:hover {
+  text-decoration: underline;
+  color: var(--ont-accent, #2563eb);
+}
+
+.sitehdr-link:focus-visible {
+  outline: 2px solid var(--ont-focus, #2563eb);
+  outline-offset: 2px;
+}
+
+.sitehdr-link.is-active {
+  font-weight: 700;
+  font-style: italic;
+}
+
+/* Small screens: allow wrap so sections drop under logos */
+@media (max-width: 900px) {
+  .sitehdr-bar {
+    flex-wrap: wrap;
+    row-gap: 0.75rem;
+  }
+
+  .sitehdr-sections {
+    flex: 1 1 100%;
+  }
+}
