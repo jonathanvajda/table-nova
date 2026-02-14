@@ -7,14 +7,14 @@
     brand: {
       mainLogo: { href: "/", src: "./images/main-logo.png", alt: "Your org/site" },
       toolLogoByPageId: {
-        "ontoeagle": { src: "./images/Eagle-VI_1753264913.svg", alt: "OntoEagle" },
+        "ontoeagle": { src: "./images/Eagle-VI_1753264913.svg", alt: "OntoEagle Lookup" },
         "iri-registry": { src: "./images/iri-registry.svg", alt: "IRI Registry" },
         "ontology-tabulator": { src: "./images/ontology-tabulator.svg", alt: "Ontology Tabulator" },
         "cq-ferret": { src: "./images/cq-ferret.svg", alt: "CQ Ferret" },
         "bp-weaver": { src: "./images/bp-weaver.svg", alt: "BP Weaver" },
         "controlled-vocabulary-registry": { src: "./images/controlled-vocabulary-registry.svg", alt: "Controlled Vocabulary Registry" },
         "tom": { src: "./images/tom.svg", alt: "Tabular Ontology Maker" },
-        "table-nova": { src: "./images/table-nova.svg", alt: "Table Nova" },
+        "table-nova": { src: "./images/table-nova-logo.svg", alt: "Table Nova" },
         "shacl-generator": { src: "./images/shacl-generator.svg", alt: "SHACL Generator" },
         "axiolotl": { src: "./images/axiolotl.svg", alt: "Axiolotl SPARQL & Inference" },
         "sparql-pattern-visualizer": { src: "./images/sparql-pattern-visualizer.svg", alt: "SPARQL Pattern Visualizer" },

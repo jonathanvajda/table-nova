@@ -39,14 +39,14 @@
 
 .sitehdr-brand__main {
   display: inline-flex;
-  height: 160px;   /* adjust to taste */
+  height: 130px;   /* adjust to taste */
   width: auto;
 }
 
 /* Next: tool logo */
 .sitehdr-tool {
   flex: 0 0 auto;
-  min-width: 160px;
+  min-width: 130px;
   display: inline-flex;
 
   align-items: flex-start;
@@ -58,13 +58,13 @@
 
 .sitehdr-tool__img {
   display: inline-flex;
-  height: 160px;   /* match main logo height */
+  height: 130px;   /* match main logo height */
   width: auto;
 }
 
 .sitehdr-tool__title {
   align-content: center;
-  height: 160px;   /* match main logo height */
+  height: 130px;   /* match main logo height */
   width: auto;
 
   font-size: 5rem;
@@ -77,7 +77,7 @@
 /* Right: section columns container */
 .sitehdr-sections {
   flex: 1 1 auto;    /* take remaining width */
-  min-height: 160px;
+  min-height: 130px;
   min-width: 0;      /* allow shrinking instead of forcing wrap below */
 
   display: grid;
