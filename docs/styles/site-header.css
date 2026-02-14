@@ -46,7 +46,7 @@
 /* Next: tool logo */
 .sitehdr-tool {
   flex: 0 0 auto;
-  min-width: 130px;
+  width: 378px;
   display: inline-flex;
 
   align-items: flex-start;
@@ -67,9 +67,9 @@
   height: 130px;   /* match main logo height */
   width: auto;
 
-  font-size: 5rem;
+  font-size: 3rem;
   font-weight: 650;
-  padding-right: 5rem;
+  padding-right: 4rem;
 
   color: var(--ont-text, #111);
 }
