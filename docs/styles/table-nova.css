@@ -1,84 +1,75 @@
 /* Table Nova (table-nova-*) – fully scoped styles */
+/* ==========================================
+   Table Nova (table-nova-*) – vars integrated
+   Assumes :root defines --ont-* once elsewhere
+   ========================================== */
 
-:root {
-  --ont-bg: #f8fafc;
-  --ont-panel-bg: #ffffff;
-  --ont-border: #d0d7de;
-
-  --ont-text: #1f2937;          /* near-black */
-  --ont-muted: #4b5563;         /* accessible muted text */
-
-  --ont-accent: #2563eb;        /* cool blue */
-  --ont-accent-soft: #e0e7ff;
-
-  --ont-pill-bg: #eef2ff;
-  --ont-pill-text: #1e3a8a;
-
-  --ont-focus: #2563eb;
-
-  --ont-radius: 6px;
-  --ont-gap: 1rem;
-
-  --ont-font-body: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  --ont-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-
+/* App container */
 .table-nova-main {
   max-width: 1100px;
   margin: 0 auto;
   padding: 1rem;
   display: grid;
-  gap: 1rem;
+  gap: var(--ont-gap, 1rem);
+
+  font-family: var(--ont-font-body, system-ui);
+  color: var(--ont-text, #111);
 }
 
+/* Cards */
 .table-nova-card {
-  border: 1px solid rgba(0,0,0,0.10);
-  border-radius: 14px;
+  border: 1px solid var(--ont-border, rgba(0,0,0,0.10));
+  border-radius: calc(var(--ont-radius, 6px) * 2.333); /* ~14px if radius=6px */
   padding: 1rem;
-  background: #fff;
+  background: var(--ont-panel-bg, #fff);
 }
 
 .table-nova-card__title {
   margin: 0 0 0.75rem;
   font-size: 1.15rem;
+  color: var(--ont-text, #111);
 }
 
 .table-nova-section-title {
   margin: 0.75rem 0 0.5rem;
   font-size: 1rem;
+  color: var(--ont-text, #111);
 }
 
 .table-nova-muted {
-  color: rgba(0,0,0,0.65);
+  color: var(--ont-muted, rgba(0,0,0,0.65));
 }
 
+/* Dropzone */
 .table-nova-dropzone {
   position: relative;
-  border: 2px dashed rgba(0,0,0,0.20);
-  border-radius: 14px;
+  border: 2px dashed var(--ont-border, rgba(0,0,0,0.20));
+  border-radius: calc(var(--ont-radius, 6px) * 2.333);
   padding: 1.1rem;
   cursor: pointer;
   outline: none;
+  background: var(--ont-panel-bg, #fff);
 }
 
-.table-nova-dropzone:focus {
-  box-shadow: 0 0 0 3px rgba(0, 93, 255, 0.25);
-  border-color: rgba(0, 93, 255, 0.45);
+.table-nova-dropzone:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ont-focus, #2563eb) 25%, transparent);
+  border-color: color-mix(in srgb, var(--ont-focus, #2563eb) 55%, var(--ont-border, #d0d7de));
 }
 
 .table-nova-dropzone--dragover {
-  border-color: rgba(0, 93, 255, 0.65);
-  background: rgba(0, 93, 255, 0.06);
+  border-color: color-mix(in srgb, var(--ont-accent, #2563eb) 70%, var(--ont-border, #d0d7de));
+  background: color-mix(in srgb, var(--ont-accent, #2563eb) 6%, var(--ont-panel-bg, #fff));
 }
 
 .table-nova-dropzone__headline {
   margin: 0;
   font-weight: 600;
+  color: var(--ont-text, #111);
 }
 
 .table-nova-dropzone__hint {
   margin: 0.35rem 0 0;
-  color: rgba(0,0,0,0.65);
+  color: var(--ont-muted, rgba(0,0,0,0.65));
 }
 
 .table-nova-dropzone__input {
@@ -88,6 +79,7 @@
   cursor: pointer;
 }
 
+/* File / run lists */
 .table-nova-filelist,
 .table-nova-runlist {
   list-style: none;
@@ -103,9 +95,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  border: 1px solid rgba(0,0,0,0.10);
+
+  border: 1px solid var(--ont-border, rgba(0,0,0,0.10));
   border-radius: 12px;
   padding: 0.6rem 0.75rem;
+
+  background: var(--ont-panel-bg, #fff);
 }
 
 .table-nova-fileitem__meta {
@@ -115,13 +110,15 @@
 
 .table-nova-fileitem__name {
   font-weight: 600;
+  color: var(--ont-text, #111);
 }
 
 .table-nova-fileitem__sub {
-  color: rgba(0,0,0,0.65);
+  color: var(--ont-muted, rgba(0,0,0,0.65));
   font-size: 0.9rem;
 }
 
+/* Actions */
 .table-nova-actions,
 .table-nova-output-actions {
   display: flex;
@@ -130,13 +127,26 @@
   flex-wrap: wrap;
 }
 
+/* Buttons */
 .table-nova-btn {
-  border: 1px solid rgba(0,0,0,0.14);
+  border: 1px solid color-mix(in srgb, var(--ont-border, #d0d7de) 70%, #000 10%);
   border-radius: 12px;
   padding: 0.55rem 0.85rem;
-  background: #fff;
+
+  background: var(--ont-panel-bg, #fff);
+  color: var(--ont-text, #111);
+
   cursor: pointer;
   font-weight: 600;
+}
+
+.table-nova-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ont-accent, #2563eb) 35%, var(--ont-border, #d0d7de));
+}
+
+.table-nova-btn:focus-visible {
+  outline: 2px solid var(--ont-focus, #2563eb);
+  outline-offset: 2px;
 }
 
 .table-nova-btn:disabled {
@@ -144,24 +154,25 @@
   opacity: 0.55;
 }
 
+/* Primary button: use accent */
 .table-nova-btn--primary {
-  border-color: rgba(0, 93, 255, 0.35);
-  background: rgba(0, 93, 255, 0.12);
-  color: rgba(0,0,0,0.85);
+  border-color: color-mix(in srgb, var(--ont-accent, #2563eb) 35%, var(--ont-border, #d0d7de));
+  background: color-mix(in srgb, var(--ont-accent, #2563eb) 12%, var(--ont-panel-bg, #fff));
+  color: color-mix(in srgb, var(--ont-text, #111) 85%, #000);
 }
 
 .table-nova-btn--primary:not(:disabled) {
-  background: rgba(0, 93, 255, 0.90);
-  border-color: rgba(0, 93, 255, 0.90);
+  background: var(--ont-accent, #2563eb);
+  border-color: var(--ont-accent, #2563eb);
   color: #fff;
 }
 
 .table-nova-btn--secondary {
-  background: rgba(0,0,0,0.04);
+  background: color-mix(in srgb, var(--ont-text, #111) 4%, var(--ont-panel-bg, #fff));
 }
 
 .table-nova-btn--tertiary {
-  background: rgba(0,0,0,0.02);
+  background: color-mix(in srgb, var(--ont-text, #111) 2%, var(--ont-panel-bg, #fff));
 }
 
 .table-nova-btn--icon {
@@ -172,6 +183,7 @@
   border-radius: 999px;
 }
 
+/* Options + fields */
 .table-nova-options {
   display: grid;
   gap: 0.75rem;
@@ -186,14 +198,25 @@
 .table-nova-label {
   font-weight: 700;
   font-size: 0.9rem;
+  color: var(--ont-text, #111);
 }
 
 .table-nova-input,
 .table-nova-select {
-  border: 1px solid rgba(0,0,0,0.18);
+  border: 1px solid color-mix(in srgb, var(--ont-border, #d0d7de) 85%, #000 8%);
   border-radius: 12px;
   padding: 0.55rem 0.65rem;
-  background: #fff;
+
+  background: var(--ont-panel-bg, #fff);
+  color: var(--ont-text, #111);
+
+  font-family: inherit;
+}
+
+.table-nova-input:focus-visible,
+.table-nova-select:focus-visible {
+  outline: 2px solid var(--ont-focus, #2563eb);
+  outline-offset: 2px;
 }
 
 .table-nova-checkboxrow {
@@ -202,10 +225,12 @@
   gap: 0.5rem;
 }
 
+/* Preview */
 .table-nova-preview {
-  border: 1px solid rgba(0,0,0,0.10);
+  border: 1px solid var(--ont-border, rgba(0,0,0,0.10));
   border-radius: 12px;
   padding: 0.75rem;
+  background: var(--ont-panel-bg, #fff);
 }
 
 .table-nova-preview__header {
@@ -218,6 +243,7 @@
 .table-nova-preview__title {
   margin: 0;
   font-size: 1rem;
+  color: var(--ont-text, #111);
 }
 
 .table-nova-preview__body {
@@ -225,23 +251,26 @@
   overflow: auto;
 }
 
+/* Table */
 .table-nova-tablewrap {
-  border: 1px solid rgba(0,0,0,0.10);
+  border: 1px solid var(--ont-border, rgba(0,0,0,0.10));
   border-radius: 12px;
   overflow: auto;
   max-height: 420px;
+  background: var(--ont-panel-bg, #fff);
 }
 
 .table-nova-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.95rem;
+  color: var(--ont-text, #111);
 }
 
 .table-nova-table th,
 .table-nova-table td {
   padding: 0.6rem;
-  border-bottom: 1px solid rgba(0,0,0,0.08);
+  border-bottom: 1px solid color-mix(in srgb, var(--ont-border, #d0d7de) 70%, transparent);
   vertical-align: top;
   text-align: left;
 }
@@ -249,21 +278,33 @@
 .table-nova-table th {
   position: sticky;
   top: 0;
-  background: #fff;
+  background: var(--ont-panel-bg, #fff);
   cursor: pointer;
 }
 
+/* Textarea */
 .table-nova-textarea {
   width: 100%;
   min-height: 280px;
-  border: 1px solid rgba(0,0,0,0.12);
+
+  border: 1px solid color-mix(in srgb, var(--ont-border, #d0d7de) 75%, transparent);
   border-radius: 12px;
+
   padding: 0.75rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  font-family: var(--ont-font-mono, ui-monospace);
   font-size: 0.92rem;
-  background: rgba(0,0,0,0.02);
+
+  background: color-mix(in srgb, var(--ont-text, #111) 2%, var(--ont-panel-bg, #fff));
+  color: var(--ont-text, #111);
 }
 
+.table-nova-textarea:focus-visible {
+  outline: 2px solid var(--ont-focus, #2563eb);
+  outline-offset: 2px;
+}
+
+/* Tabs */
 .table-nova-tabs {
   display: flex;
   gap: 0.5rem;
@@ -272,17 +313,28 @@
 }
 
 .table-nova-tab {
-  border: 1px solid rgba(0,0,0,0.14);
-  background: rgba(0,0,0,0.02);
+  border: 1px solid color-mix(in srgb, var(--ont-border, #d0d7de) 70%, #000 10%);
+  background: color-mix(in srgb, var(--ont-text, #111) 2%, var(--ont-panel-bg, #fff));
   border-radius: 999px;
   padding: 0.4rem 0.75rem;
   cursor: pointer;
   font-weight: 700;
+
+  color: var(--ont-text, #111);
+}
+
+.table-nova-tab:hover {
+  border-color: color-mix(in srgb, var(--ont-accent, #2563eb) 35%, var(--ont-border, #d0d7de));
+}
+
+.table-nova-tab:focus-visible {
+  outline: 2px solid var(--ont-focus, #2563eb);
+  outline-offset: 2px;
 }
 
 .table-nova-tab--active {
-  background: rgba(0, 93, 255, 0.12);
-  border-color: rgba(0, 93, 255, 0.35);
+  background: var(--ont-accent-soft, #e0e7ff);
+  border-color: color-mix(in srgb, var(--ont-accent, #2563eb) 35%, var(--ont-border, #d0d7de));
 }
 
 .table-nova-tabpanel {
@@ -293,6 +345,7 @@
   display: block;
 }
 
+/* Toasts */
 .table-nova-toasts {
   position: fixed;
   bottom: 1rem;
@@ -304,21 +357,23 @@
 }
 
 .table-nova-toast {
-  border: 1px solid rgba(0,0,0,0.14);
+  border: 1px solid color-mix(in srgb, var(--ont-border, #d0d7de) 70%, #000 10%);
   border-radius: 14px;
   padding: 0.75rem;
-  background: #fff;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+
+  background: var(--ont-panel-bg, #fff);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ont-text, #111) 10%, transparent);
 }
 
 .table-nova-toast__title {
   margin: 0;
   font-weight: 800;
+  color: var(--ont-text, #111);
 }
 
 .table-nova-toast__body {
   margin: 0.25rem 0 0;
-  color: rgba(0,0,0,0.75);
+  color: color-mix(in srgb, var(--ont-muted, #4b5563) 85%, transparent);
 }
 
 /* ------------------------------------------------------------------ */
@@ -328,7 +383,7 @@
 :where(.table-nova-main) {
   font-size: 16px;          /* bump base size inside the app */
   line-height: 1.45;
-  color: rgba(0, 0, 0, 0.92);
+  color: var(--ont-text, rgba(0, 0, 0, 0.92));
 }
 
 /* Header typography: Skeleton can make this feel small */
@@ -414,7 +469,7 @@
 
 .table-nova-table th {
   font-size: 0.95rem;
-  letter-spacing: normal;   /* if any upstream CSS adds it */
+  letter-spacing: normal;
   text-transform: none;
 }
 
