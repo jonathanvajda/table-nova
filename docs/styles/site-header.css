@@ -66,6 +66,7 @@
   align-content: center;
   height: 130px;   /* match main logo height */
   width: auto;
+  max-width: 160px;
 
   font-size: 3rem;
   font-weight: 650;
@@ -121,7 +122,7 @@
   color: var(--ont-text, #111);
 
   display: inline-block;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   padding: 0.1rem 0;
   border-radius: var(--ont-radius, 6px);
   outline: none;
