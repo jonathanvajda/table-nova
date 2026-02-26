@@ -5,7 +5,7 @@
   // --- Your config (as you provided) ---
   const HEADER_CONFIG = {
     brand: {
-      mainLogo: { href: "/", src: "./images/main-logo.png", alt: "Your org/site" },
+      mainLogo: { href: "/", src: "./images/main-logo.png", alt: "Erhaben Semantic Solutions" },
       toolLogoByPageId: {
         "ontoeagle": { src: "./images/Eagle-VI_1753264913.svg", alt: "OntoEagle Semantic Lookup" },
         "ontology-tabulator": { src: "./images/ontology-tabulator.svg", alt: "Ontology Tabulator" },
@@ -42,7 +42,7 @@
       {
         title: "Data Exploration",
         items: [
-          { label: "OntoEagle", href: "https://jonathanvajda.github.io/OntoEagle", pageId: "ontoeagle" },
+          { label: "OntoEagle Semantic Lookup", href: "https://jonathanvajda.github.io/OntoEagle", pageId: "ontoeagle" },
         //  { label: "IRI Registry", href: "/iri-registry.html", pageId: "iri-registry" },
           { label: "Ontology Tabulator", href: "https://jonathanvajda.github.io/ontology-tabulator/", pageId: "ontology-tabulator" },
           { label: "Visual Lynx", href: "https://jonathanvajda.github.io/visual-lynx/", pageId: "visual-lynx" },
@@ -165,10 +165,82 @@
           </div>
 
           ${buildSectionsHtml(pageId)}
+
+          <div id="light-dark-toggle" style="margin-left: auto;">
+            <button
+              type="button"
+              class="theme-toggle"
+              id="themeToggle"
+              aria-label="Toggle theme"
+              aria-pressed="false"
+              title="Toggle theme"
+            >
+            <span class="theme-toggle__track" aria-hidden="true">
+              <span class="theme-toggle__icon theme-toggle__icon--sun">☀️</span>
+              <span class="theme-toggle__icon theme-toggle__icon--moon">🌙</span>
+              <span class="theme-toggle__thumb"></span>
+            </span>
+            <span class="theme-toggle__sr">Toggle theme</span>
+          </button>
+          </div>
         </div>
       </div>
     `;
   }
+
+  // Theme toggle: sets <html data-theme="light|dark"> and persists choice.
+  (() => {
+    const STORAGE_KEY = 'ont-theme'; // 'light' | 'dark'
+    const root = document.documentElement;
+    const btn = document.getElementById('themeToggle');
+
+    if (!btn) return;
+
+    const getSystemTheme = () => {
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light';
+    };
+
+    const getSavedTheme = () => {
+      const v = localStorage.getItem(STORAGE_KEY);
+      return (v === 'light' || v === 'dark') ? v : null;
+    };
+
+    const applyTheme = (theme) => {
+      root.setAttribute('data-theme', theme);
+      // aria-pressed: true when "dark" (you can invert if you prefer)
+      btn.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+      btn.title = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    };
+
+    const initTheme = () => {
+      const saved = getSavedTheme();
+      const theme = saved || getSystemTheme();
+      applyTheme(theme);
+    };
+
+    const toggleTheme = () => {
+      const current = root.getAttribute('data-theme') || getSystemTheme();
+      const next = current === 'dark' ? 'light' : 'dark';
+      localStorage.setItem(STORAGE_KEY, next);
+      applyTheme(next);
+    };
+
+    // Initialize once on load
+    initTheme();
+
+    // Button click toggles
+    btn.addEventListener('click', toggleTheme);
+
+    // Optional: If no saved preference, follow system changes live
+    const mql = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    if (mql) {
+      mql.addEventListener('change', () => {
+        if (!getSavedTheme()) applyTheme(getSystemTheme());
+      });
+    }
+  })();
 
   // script loaded at end of body => DOM is ready
   renderHeader();
