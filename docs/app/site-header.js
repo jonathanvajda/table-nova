@@ -5,7 +5,7 @@
   // --- Your config (as you provided) ---
   const HEADER_CONFIG = {
     brand: {
-      mainLogo: { href: "/", src: "./images/main-logo.png", alt: "Erhaben Semantic Solutions" },
+      mainLogo: { href: "https://jonathanvajda.github.io/OntoEagle/about.html", src: "./images/main-logo.png", alt: "Erhaben Semantic Solutions" },
       toolLogoByPageId: {
         "ontoeagle": { src: "./images/Eagle-VI_1753264913.svg", alt: "OntoEagle Semantic Lookup" },
         "ontology-tabulator": { src: "./images/ontology-tabulator.svg", alt: "Ontology Tabulator" },
@@ -15,7 +15,8 @@
         "tom": { src: "./images/tom.svg", alt: "Tabular Ontology Maker" },
         "table-nova": { src: "./images/table-nova-logo.svg", alt: "Table Nova" },
         "axiolotl": { src: "./images/axiolotl.svg", alt: "Axiolotl SPARQL & Inference" },
-        "myna-iri-swapper": { src: "./images/myna-iri-swapper.png", alt: "Myna IRI Swapper" },
+        "myna-iri-swapper": { src: "./images/myna-iri-swapper.png", alt: "Myna RDF IRI Swapper" },
+        "myna-sparql-iri-swapper": { src: "./images/myna-iri-swapper.png", alt: "Myna SPARQL IRI Swapper" },
         "visual-lynx": { src: "./images/visual-lynx.svg", alt: "Visual Lynx" },
       },
       defaultToolLogo: { src: "./images/default-logo.png", alt: "Semantic Tools" },
@@ -23,7 +24,7 @@
         "ontoeagle": { title: "OntoEagle Semantic Lookup" },
         "iri-registry": { title: "IRI Registry" },
         "ontology-tabulator": { title: "Ontology Tabulator" },
-        "cq-ferret": { title: "CQ Ferret" },
+        "cq-ferret": { title: "Competency Question Ferret" },
         "bp-weaver": { title: "BP Weaver" },
         "controlled-vocabulary-registry": { title: "Controlled Vocabulary Registry" },
         "tom": { title: "Tabular Ontology Maker" },
@@ -32,7 +33,8 @@
         "axiolotl": { title: "Axiolotl SPARQL & Inference" },
         "sparql-pattern-visualizer": { title: "SPARQL Pattern Visualizer" },
         "ontology-curation-manager": { title: "Ontology Curation Manager" },
-        "myna-iri-swapper": { title: "Myna IRI Swapper" },
+        "myna-iri-swapper": { title: "Myna RDF IRI Swapper" },
+        "myna-sparql-iri-swapper": { title: "Myna SPARQL IRI Swapper" },
         "visual-lynx": { title: "Visual Lynx" },
         "linked-data-transformer": { title: "Linked-Data Transformer" },
         }
@@ -51,9 +53,9 @@
       {
         title: "Domain Analysis",
         items: [
-    /**          { label: "Competency Question Ferret", href: "/cq-ferret.html", pageId: "cq-ferret" },
-          { label: "Business Process Weaver", href: "/bp-weaver.html", pageId: "bp-weaver" },*/
-           { label: "Mermaid Diagram Builder 🔗", href: "https://skreen5hot.github.io/mermaid/", pageId: "mermaid-diagram-builder" },
+          { label: "Competency Question Ferret", href: "https://jonathanvajda.github.io/OntoEagle/cq-ferret.html", pageId: "cq-ferret" },
+          /*{ label: "Business Process Weaver", href: "/bp-weaver.html", pageId: "bp-weaver" },*/
+          { label: "Mermaid Diagram Builder 🔗", href: "https://skreen5hot.github.io/mermaid/", pageId: "mermaid-diagram-builder" },
         ],
       },
       {
@@ -78,7 +80,8 @@
         title: "Maintenance",
             items: [
             { label: "Ontology Curation Manager", href: "https://jonathanvajda.github.io/ontology-curation-manager/", pageId: "ontology-curation-manager" },
-            { label: "Myna IRI Swapper", href: "https://jonathanvajda.github.io/iri-swapper/", pageId: "myna-iri-swapper" },
+            { label: "Myna RDF IRI Swapper", href: "https://jonathanvajda.github.io/iri-swapper/", pageId: "myna-iri-swapper" },
+            { label: "Myna SPARQL IRI Swapper", href: "https://jonathanvajda.github.io/iri-swapper/sparql-iri-swapper.html", pageId: "myna-sparql-iri-swapper" }, 
             ],
         },
         ],
