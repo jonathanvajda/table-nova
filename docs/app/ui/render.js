@@ -75,7 +75,7 @@ export function buildStagedFileItem(staged) {
   btn.type = 'button';
   btn.setAttribute('aria-label', 'Remove file');
   btn.textContent = '×';
-  btn.dataset.TableNovaRemoveStagedId = staged.id;
+  btn.dataset.tableNovaRemoveStagedId = staged.id;
 
   li.appendChild(meta);
   li.appendChild(btn);
@@ -89,8 +89,8 @@ export function buildStagedFileItem(staged) {
  * @returns {void}
  */
 export function mountRemoveHandler(listEl, onRemove) {
-  if (listEl.dataset.TableNovaRemoveHandlerMounted === '1') return;
-  listEl.dataset.TableNovaRemoveHandlerMounted = '1';
+  if (listEl.dataset.tableNovaRemoveHandlerMounted === '1') return;
+  listEl.dataset.tableNovaRemoveHandlerMounted = '1';
   listEl.addEventListener('click', (e) => handleRemoveClick(e, onRemove));
 }
 
@@ -107,7 +107,7 @@ export function handleRemoveClick(e, onRemove) {
   const btn = t.closest('[data-table-nova-remove-staged-id]');
   if (!btn) return;
 
-  const id = /** @type {HTMLElement} */ (btn).dataset.TableNovaRemoveStagedId;
+  const id = /** @type {HTMLElement} */ (btn).dataset.tableNovaRemoveStagedId;
   if (id) onRemove(id);
 }
 
@@ -453,12 +453,12 @@ export function buildPreviewTable(staged) {
 
   // Datatype selector row
   const dtr = document.createElement('tr');
-  dtr.dataset.TableNovaDatatypeRow = '1';
+  dtr.dataset.tableNovaDatatypeRow = '1';
   for (let i = 0; i < effectiveCols; i += 1) {
     const td = document.createElement('td');
     const sel = document.createElement('select');
     sel.className = 'table-nova-select';
-    sel.dataset.TableNovaDatatypeColIndex = String(i);
+    sel.dataset.tableNovaDatatypeColIndex = String(i);
     sel.appendChild(optionOf(`${XSD}string`, 'xsd:string'));
     sel.appendChild(optionOf(`${XSD}boolean`, 'xsd:boolean'));
     sel.appendChild(optionOf(`${XSD}integer`, 'xsd:integer'));
@@ -673,14 +673,14 @@ export function buildRunItem(run) {
   loadBtn.className = 'table-nova-btn table-nova-btn--tertiary';
   loadBtn.type = 'button';
   loadBtn.textContent = 'Load';
-  loadBtn.dataset.TableNovaLoadGraphIri = run.graphIri;
+  loadBtn.dataset.tableNovaLoadGraphIri = run.graphIri;
 
   const delBtn = document.createElement('button');
   delBtn.className = 'table-nova-btn table-nova-btn--icon';
   delBtn.type = 'button';
   delBtn.textContent = '×';
   delBtn.setAttribute('aria-label', 'Delete run');
-  delBtn.dataset.TableNovaDeleteGraphIri = run.graphIri;
+  delBtn.dataset.tableNovaDeleteGraphIri = run.graphIri;
 
   actions.appendChild(loadBtn);
   actions.appendChild(delBtn);
@@ -698,8 +698,8 @@ export function buildRunItem(run) {
  * @returns {void}
  */
 export function mountRunListHandlers(listEl, onDelete, onLoad) {
-  if (listEl.dataset.TableNovaRunHandlersMounted === '1') return;
-  listEl.dataset.TableNovaRunHandlersMounted = '1';
+  if (listEl.dataset.tableNovaRunHandlersMounted === '1') return;
+  listEl.dataset.tableNovaRunHandlersMounted = '1';
   listEl.addEventListener('click', (e) => handleRunListClick(e, onDelete, onLoad));
 }
 
@@ -716,14 +716,14 @@ export function handleRunListClick(e, onDelete, onLoad) {
 
   const del = t.closest('[data-table-nova-delete-graph-iri]');
   if (del) {
-    const iri = /** @type {HTMLElement} */ (del).dataset.TableNovaDeleteGraphIri;
+    const iri = /** @type {HTMLElement} */ (del).dataset.tableNovaDeleteGraphIri;
     if (iri) void onDelete(iri);
     return;
   }
 
   const load = t.closest('[data-table-nova-load-graph-iri]');
   if (load) {
-    const iri = /** @type {HTMLElement} */ (load).dataset.TableNovaLoadGraphIri;
+    const iri = /** @type {HTMLElement} */ (load).dataset.tableNovaLoadGraphIri;
     if (iri) void onLoad(iri);
   }
 }
@@ -814,7 +814,7 @@ export function handleSortHeaderClick(e, table) {
 export function handleFilterInput(e, table) {
   const t = /** @type {HTMLInputElement|null} */ (e.target instanceof HTMLInputElement ? e.target : null);
   if (!t) return;
-  table.dataset.TableNovaFilter = t.value || '';
+  table.dataset.tableNovaFilter = t.value || '';
   applySortAndFilter(table);
 }
 
@@ -825,7 +825,7 @@ export function handleFilterInput(e, table) {
  */
 export function applySortAndFilter(table) {
   const raw = /** @type {any[]} */ (table.__TableNovaQuads || []);
-  const filter = String(table.dataset.TableNovaFilter || '').toLowerCase().trim();
+  const filter = String(table.dataset.tableNovaFilter || '').toLowerCase().trim();
 
   let out = raw.slice();
 
