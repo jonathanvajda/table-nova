@@ -4,6 +4,23 @@
 
 /**
  * @typedef {import('../state/types.js').PredicateOptions} PredicateOptions
+ * @typedef {import('../state/types.js').HeaderStyle} HeaderStyle
+ */
+
+const XSD_STRING = 'http://www.w3.org/2001/XMLSchema#string';
+const SIMPLE_ACRONYMS = new Set(['ID', 'IRI', 'URI', 'URL', 'UUID', 'API', 'CSV', 'TSV', 'JSON', 'XML', 'HTML', 'RDF', 'RDFS', 'OWL']);
+
+/**
+ * @typedef {Object} ColumnSchema
+ * @property {string} key
+ * @property {number} index
+ * @property {string} originalHeader
+ * @property {HeaderStyle} detectedStyle
+ * @property {string[]} tokens
+ * @property {string} label
+ * @property {string} predicateLocalName
+ * @property {string} predicateIri
+ * @property {string} datatypeIri
  */
 
 /**
@@ -127,17 +144,28 @@ export function buildPredicateIrisForColumns(columnKeys, predicateOptions, baseP
  */
 export function buildPredicateLocalName(columnKey, predicateOptions) {
   const raw = String(columnKey ?? '').trim() || 'Column';
+  const tokens = splitHeaderTokens(raw);
+  return buildPredicateLocalNameFromTokens(tokens, predicateOptions);
+}
+
+/**
+ * Builds a predicate local name from already-normalized header tokens.
+ * @param {string[]} tokens
+ * @param {PredicateOptions} predicateOptions
+ * @returns {string}
+ */
+export function buildPredicateLocalNameFromTokens(tokens, predicateOptions) {
   const prefixHas = Boolean(predicateOptions?.prefixHas ?? true);
   const casing = predicateOptions?.casing ?? 'camelCase';
+  const words = (tokens || []).map((t) => String(t ?? '').trim()).filter(Boolean);
+  const effective = prefixHas ? ['has', ...words] : words;
 
-  const phrase = prefixHas ? `has ${raw}` : raw;
-  const tokens = tokenizeWords(phrase);
-
-  if (casing === 'snake_case') return tokens.map((t) => t.toLowerCase()).join('_');
-  if (casing === 'SHOUT_CASE') return tokens.map((t) => t.toUpperCase()).join('_');
-  if (casing === 'PascalCase') return tokens.map(capitalize).join('');
+  if (effective.length === 0) return casing === 'PascalCase' ? 'Value' : casing === 'SHOUT_CASE' ? 'VALUE' : 'value';
+  if (casing === 'snake_case') return effective.map((t) => t.toLowerCase()).join('_');
+  if (casing === 'SHOUT_CASE') return effective.map((t) => t.toUpperCase()).join('_');
+  if (casing === 'PascalCase') return effective.map(toPredicatePascalToken).join('');
   // default camelCase
-  return tokens.length === 0 ? 'hasValue' : [tokens[0].toLowerCase(), ...tokens.slice(1).map(capitalize)].join('');
+  return [effective[0].toLowerCase(), ...effective.slice(1).map(toPredicatePascalToken)].join('');
 }
 
 /**
@@ -146,12 +174,7 @@ export function buildPredicateLocalName(columnKey, predicateOptions) {
  * @returns {string[]}
  */
 export function tokenizeWords(phrase) {
-  const cleaned = String(phrase ?? '')
-    .replace(/[_-]+/g, ' ')
-    .replace(/[^A-Za-z0-9 ]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return cleaned ? cleaned.split(' ') : [];
+  return splitHeaderTokens(phrase);
 }
 
 /**
@@ -162,6 +185,195 @@ export function tokenizeWords(phrase) {
 export function capitalize(token) {
   const s = String(token ?? '');
   return s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : '';
+}
+
+/**
+ * Builds first-class schema metadata for each table column.
+ * @param {{
+ *   header: string[]|null,
+ *   rows: string[][],
+ *   treatFirstRowAsHeader: boolean,
+ *   predicateOptions: PredicateOptions,
+ *   basePredicateIri: string,
+ *   datatypesByColumnKey?: Record<string, string>,
+ *   columnSchemaOverridesByKey?: Record<string, {label?: string, predicateLocalName?: string}>
+ * }} params
+ * @returns {ColumnSchema[]}
+ */
+export function buildColumnSchemas({
+  header,
+  rows,
+  treatFirstRowAsHeader,
+  predicateOptions,
+  basePredicateIri,
+  datatypesByColumnKey = {},
+  columnSchemaOverridesByKey = {}
+}) {
+  const keys = buildColumnKeys(header, rows, treatFirstRowAsHeader);
+  /** @type {Record<string, number>} */
+  const usedLocalNames = {};
+
+  return keys.map((key, index) => {
+    const source = getOriginalHeaderForColumn(header, key, index, treatFirstRowAsHeader);
+    const detectedStyle = detectHeaderStyle(source);
+    const tokens = splitHeaderTokens(source);
+    const inferredLabel = buildHumanLabel(tokens, source);
+    const inferredLocal = buildPredicateLocalNameFromTokens(tokens, predicateOptions);
+    const override = columnSchemaOverridesByKey?.[key] || {};
+    const label = String(override.label ?? inferredLabel).trim() || inferredLabel;
+    const baseLocalName = sanitizePredicateLocalName(override.predicateLocalName ?? inferredLocal) || inferredLocal;
+    const predicateLocalName = uniquePredicateLocalName(baseLocalName, usedLocalNames);
+
+    return {
+      key,
+      index,
+      originalHeader: source,
+      detectedStyle,
+      tokens,
+      label,
+      predicateLocalName,
+      predicateIri: `${String(basePredicateIri ?? '')}${predicateLocalName}`,
+      datatypeIri: datatypesByColumnKey?.[key] || XSD_STRING
+    };
+  });
+}
+
+/**
+ * Ensures generated predicate local names are unique within a table schema.
+ * @param {string} localName
+ * @param {Record<string, number>} used
+ * @returns {string}
+ */
+export function uniquePredicateLocalName(localName, used) {
+  const base = String(localName || 'value');
+  const n = (used[base] || 0) + 1;
+  used[base] = n;
+  return n === 1 ? base : `${base}_${n}`;
+}
+
+/**
+ * Returns a schema by its stable column key.
+ * @param {ColumnSchema[]} columnSchemas
+ * @returns {Record<string, ColumnSchema>}
+ */
+export function columnSchemasByKey(columnSchemas) {
+  /** @type {Record<string, ColumnSchema>} */
+  const out = {};
+  for (const schema of columnSchemas || []) {
+    if (schema?.key) out[schema.key] = schema;
+  }
+  return out;
+}
+
+/**
+ * Detects common column header naming styles.
+ * @param {string} value
+ * @returns {HeaderStyle}
+ */
+export function detectHeaderStyle(value) {
+  const s = String(value ?? '').trim();
+  if (!s) return 'unknown';
+  if (/\s/.test(s)) return 'human';
+  if (/^[A-Z0-9]+(?:_[A-Z0-9]+)+$/.test(s)) return 'SHOUTING_SNAKE';
+  if (/^[a-z0-9]+(?:_[a-z0-9]+)+$/.test(s)) return 'snake_case';
+  if (/^[A-Z0-9]+$/.test(s)) return 'SHOUT_CASE';
+  if (/^[a-z][A-Za-z0-9]*$/.test(s) && /[a-z0-9][A-Z]/.test(s)) return 'camelCase';
+  if (/^[A-Z][A-Za-z0-9]*$/.test(s) && (/[a-z0-9][A-Z]/.test(s) || /[A-Z][a-z]/.test(s))) return 'PascalCase';
+  if (/^[A-Za-z0-9]+$/.test(s)) return 'human';
+  return 'unknown';
+}
+
+/**
+ * Splits human, snake, shout, kebab, camel, and Pascal headers into word tokens.
+ * @param {string} value
+ * @returns {string[]}
+ */
+export function splitHeaderTokens(value) {
+  const prepared = String(value ?? '')
+    .trim()
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/[^A-Za-z0-9 ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!prepared) return [];
+  return prepared.split(' ').map(normalizeToken).filter(Boolean);
+}
+
+/**
+ * Builds a display label from normalized tokens.
+ * @param {string[]} tokens
+ * @param {string} fallback
+ * @returns {string}
+ */
+export function buildHumanLabel(tokens, fallback) {
+  const words = (tokens || []).map(labelToken).filter(Boolean);
+  return words.length > 0 ? words.join(' ') : (String(fallback ?? '').trim() || 'Column');
+}
+
+/**
+ * Sanitizes a user-provided local name for use as an IRI suffix.
+ * @param {string} value
+ * @returns {string}
+ */
+export function sanitizePredicateLocalName(value) {
+  return String(value ?? '')
+    .trim()
+    .replace(/\s+/g, '_')
+    .replace(/[^A-Za-z0-9_-]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^[_-]+|[_-]+$/g, '');
+}
+
+/**
+ * @param {string[]|null} header
+ * @param {string} key
+ * @param {number} index
+ * @param {boolean} treatFirstRowAsHeader
+ * @returns {string}
+ */
+function getOriginalHeaderForColumn(header, key, index, treatFirstRowAsHeader) {
+  if (treatFirstRowAsHeader && Array.isArray(header)) {
+    const raw = header[index];
+    const s = String(raw ?? '');
+    return s.trim() ? s : key;
+  }
+  return key;
+}
+
+/**
+ * @param {string} token
+ * @returns {string}
+ */
+function normalizeToken(token) {
+  const s = String(token ?? '').trim();
+  if (!s) return '';
+  const upper = s.toUpperCase();
+  return SIMPLE_ACRONYMS.has(upper) ? upper : s.toLowerCase();
+}
+
+/**
+ * @param {string} token
+ * @returns {string}
+ */
+function labelToken(token) {
+  const s = String(token ?? '').trim();
+  if (!s) return '';
+  const upper = s.toUpperCase();
+  return SIMPLE_ACRONYMS.has(upper) ? upper : capitalize(s);
+}
+
+/**
+ * @param {string} token
+ * @returns {string}
+ */
+function toPredicatePascalToken(token) {
+  const s = String(token ?? '').trim();
+  if (!s) return '';
+  const upper = s.toUpperCase();
+  return SIMPLE_ACRONYMS.has(upper) ? upper : capitalize(s);
 }
 
 /**

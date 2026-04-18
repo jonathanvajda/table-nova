@@ -5,6 +5,7 @@
 /**
  * @typedef {import('../state/types.js').FileOptions} FileOptions
  * @typedef {import('../tabular/parseTabular.js').TabularData} TabularData
+ * @typedef {import('./schema.js').ColumnSchema} ColumnSchema
  */
 
 /**
@@ -26,7 +27,8 @@ let _n3Mod = null;
  *   tabular: TabularData,
  *   options: FileOptions,
  *   baseInstanceIri: string,
- *   predicateIris: Record<string, string>,
+ *   predicateIris?: Record<string, string>,
+ *   columnSchemas?: ColumnSchema[],
  *   graphIri: string,
  *   buildRowInstanceIri: (params: {baseInstanceIri: string, rowIndex: number}) => string,
  *   buildLiteralObject: (value: string, datatypeIri: string) => Promise<any>
@@ -38,6 +40,7 @@ export async function buildDatasetFromTabular({
   options,
   baseInstanceIri,
   predicateIris,
+  columnSchemas,
   graphIri,
   buildRowInstanceIri,
   buildLiteralObject
@@ -47,7 +50,14 @@ export async function buildDatasetFromTabular({
   const store = new Store();
   const g = DataFactory.namedNode(graphIri);
 
-  const columnKeys = Object.keys(predicateIris);
+  const schemaList = Array.isArray(columnSchemas) && columnSchemas.length > 0
+    ? columnSchemas
+    : Object.keys(predicateIris || {}).map((key, index) => ({
+        key,
+        index,
+        predicateIri: predicateIris[key],
+        datatypeIri: options.datatypesByColumnKey?.[key] || 'http://www.w3.org/2001/XMLSchema#string'
+      }));
 
   // Determine data rows (if treatFirstRowAsHeader is false, we re-insert the header row as a data row).
   const dataRows = options.treatFirstRowAsHeader
@@ -65,15 +75,16 @@ export async function buildDatasetFromTabular({
     const subjectIri = buildRowInstanceIri({ baseInstanceIri, rowIndex: r });
     const s = DataFactory.namedNode(subjectIri);
 
-    for (let c = 0; c < columnKeys.length; c += 1) {
-      const key = columnKeys[c];
-      const pIri = predicateIris[key];
+    for (let c = 0; c < schemaList.length; c += 1) {
+      const schema = schemaList[c];
+      const key = schema.key;
+      const pIri = schema.predicateIri;
       if (!pIri) continue;
 
       const cell = row[c];
       if (cell === undefined || cell === null || String(cell).trim() === '') continue;
 
-      const datatype = options.datatypesByColumnKey?.[key] || 'http://www.w3.org/2001/XMLSchema#string';
+      const datatype = schema.datatypeIri || options.datatypesByColumnKey?.[key] || 'http://www.w3.org/2001/XMLSchema#string';
       const obj = await buildLiteralObject(String(cell), datatype);
 
       const p = DataFactory.namedNode(pIri);

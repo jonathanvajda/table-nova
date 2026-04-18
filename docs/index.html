@@ -131,6 +131,9 @@
         <h3 class="table-nova-section-title">Staging area</h3>
         <ul class="table-nova-filelist" id="TableNovaFileList" aria-label="Staged files"></ul>
       </div>
+      <div class="table-nova-actions">
+        <button id="TableNovaClearBtn" class="table-nova-btn table-nova-btn--secondary" type="button">Clear staged</button>
+      </div>
 
       <div aria-labelledby="table-nova-options-title">
         <h3 id="table-nova-options-title" class="table-nova-section-title">Options (per file)</h3>
@@ -140,8 +143,7 @@
       </div>
 
       <div class="table-nova-actions">
-        <button id="TableNovaRunBtn" class="table-nova-btn table-nova-btn--primary" type="button" disabled>RUN</button>
-        <button id="TableNovaClearBtn" class="table-nova-btn table-nova-btn--secondary" type="button">Clear staged</button>
+        <button id="TableNovaRunBtn" class="table-nova-btn table-nova-btn--primary" type="button" disabled>RUN TABLE NOVA</button>
       </div>
     </section>
 
@@ -150,6 +152,7 @@
 
       <nav class="table-nova-tabs" aria-label="Output tabs">
         <button class="table-nova-tab table-nova-tab--active" type="button" data-tab="turtle">Turtle</button>
+        <button class="table-nova-tab" type="button" data-tab="ontology">Ontology</button>
         <button class="table-nova-tab" type="button" data-tab="ntriples">N-Triples</button>
         <button class="table-nova-tab" type="button" data-tab="jsonld">JSON-LD</button>
         <button class="table-nova-tab" type="button" data-tab="session">Session Data</button>
@@ -163,6 +166,14 @@
           </div>
           <label class="table-nova-label" for="TableNovaTurtleText">Turtle</label>
           <textarea id="TableNovaTurtleText" class="table-nova-textarea" spellcheck="false" readonly></textarea>
+        </section>
+
+        <section class="table-nova-tabpanel" data-panel="ontology">
+          <div class="table-nova-output-actions">
+            <button id="TableNovaExportOntologyBtn" class="table-nova-btn table-nova-btn--tertiary" type="button">Export Ontology</button>
+          </div>
+          <label class="table-nova-label" for="TableNovaOntologyText">Ontology Turtle</label>
+          <textarea id="TableNovaOntologyText" class="table-nova-textarea" spellcheck="false" readonly></textarea>
         </section>
 
         <section class="table-nova-tabpanel" data-panel="ntriples">

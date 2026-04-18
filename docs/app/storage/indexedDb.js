@@ -4,6 +4,7 @@
 
 /**
  * @typedef {import('../rdf/buildDataset.js').QuadRecord} QuadRecord
+ * @typedef {import('../rdf/schema.js').ColumnSchema} ColumnSchema
  */
 
 /**
@@ -12,6 +13,8 @@
  * @property {string} filename
  * @property {string} createdAtIso
  * @property {QuadRecord[]} quads
+ * @property {ColumnSchema[]} [columnSchemas]
+ * @property {string} [ontologyTurtle]
  */
 
 const DB_NAME = 'table-nova';

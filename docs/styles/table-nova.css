@@ -6,7 +6,7 @@
 
 /* App container */
 .table-nova-main {
-  max-width: 1100px;
+  max-width: min(1600px, calc(100vw - 2rem));
   margin: 0 auto;
   padding: 1rem;
   display: grid;
@@ -26,13 +26,15 @@
 
 .table-nova-card__title {
   margin: 0 0 0.75rem;
-  font-size: 1.15rem;
+  font-size: 1.3rem;
+  line-height: 1.2;
   color: var(--ont-text, #111);
 }
 
 .table-nova-section-title {
   margin: 0.75rem 0 0.5rem;
-  font-size: 1rem;
+  font-size: 1.12rem;
+  line-height: 1.25;
   color: var(--ont-text, #111);
 }
 
@@ -115,7 +117,7 @@
 
 .table-nova-fileitem__sub {
   color: var(--ont-muted, rgba(0,0,0,0.65));
-  font-size: 0.9rem;
+  font-size: 1.2rem;
 }
 
 /* Actions */
@@ -196,8 +198,8 @@
 }
 
 .table-nova-label {
-  font-weight: 700;
-  font-size: 0.9rem;
+  font-weight: 600;
+  font-size: 1.25rem;
   color: var(--ont-text, #111);
 }
 
@@ -223,6 +225,12 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.table-nova-input--rownum {
+  width: 5rem;
+  padding-right: 0.4rem;
 }
 
 /* Preview */
@@ -242,7 +250,8 @@
 
 .table-nova-preview__title {
   margin: 0;
-  font-size: 1rem;
+  font-size: 2rem;
+  line-height: 1.25;
   color: var(--ont-text, #111);
 }
 
@@ -260,6 +269,10 @@
   background: var(--ont-panel-bg, #fff);
 }
 
+.table-nova-tablewrap + .table-nova-tablewrap {
+  margin-top: 0.75rem;
+}
+
 .table-nova-table {
   width: 100%;
   border-collapse: collapse;
@@ -273,13 +286,39 @@
   border-bottom: 1px solid color-mix(in srgb, var(--ont-border, #d0d7de) 70%, transparent);
   vertical-align: top;
   text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
-.table-nova-table th {
+.table-nova-table thead th {
   position: sticky;
   top: 0;
   background: var(--ont-panel-bg, #fff);
   cursor: pointer;
+}
+
+.table-nova-table .table-nova-input,
+.table-nova-table .table-nova-select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.table-nova-table--preview-schema {
+  width: max-content;
+  min-width: 100%;
+  table-layout: fixed;
+}
+
+.table-nova-table--preview-schema th:first-child {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.table-nova-table--preview-schema .table-nova-schema-row--first th,
+.table-nova-table--preview-schema .table-nova-schema-row--first td {
+  border-top: 2px solid var(--ont-border, rgba(0,0,0,0.12));
 }
 
 /* Textarea */
@@ -388,23 +427,23 @@
 
 /* Header typography: Skeleton can make this feel small */
 .table-nova-header__title {
-  font-size: 2.0rem;
+  font-size: 3.5rem;
   line-height: 1.15;
 }
 
 .table-nova-header__subtitle {
-  font-size: 1.0rem;
+  font-size: 1.5rem;
   line-height: 1.35;
 }
 
 /* Card titles / section labels: keep readable */
 .table-nova-card__title {
-  font-size: 1.2rem;
+  font-size: 2.5rem;
   line-height: 1.2;
 }
 
 .table-nova-section-title {
-  font-size: 1.05rem;
+  font-size: 2rem;
   line-height: 1.2;
 }
 
@@ -414,7 +453,7 @@
 .table-nova-main button.table-nova-btn,
 .table-nova-main a.table-nova-btn {
   font-family: inherit;
-  font-size: 1rem;
+  font-size: 1.5rem;
   line-height: 1.1;
   height: auto;                /* override Skeleton’s fixed height */
   text-transform: none;        /* override Skeleton’s uppercase */
@@ -453,7 +492,7 @@
 .table-nova-main .table-nova-select,
 .table-nova-main .table-nova-textarea {
   font-family: inherit;
-  font-size: 1rem;
+  font-size: 1.3rem;
   line-height: 1.25;
 }
 
@@ -464,11 +503,10 @@
 
 /* Table readability */
 .table-nova-table {
-  font-size: 1rem;
+  font-size: 1.25rem;
 }
 
 .table-nova-table th {
-  font-size: 0.95rem;
   letter-spacing: normal;
   text-transform: none;
 }

@@ -3,7 +3,9 @@ import {
   toExcelLetters,
   buildColumnKeys,
   buildPredicateLocalName,
-  tokenizeWords
+  tokenizeWords,
+  detectHeaderStyle,
+  buildColumnSchemas
 } from '../docs/app/rdf/schema.js';
 
 test('slugify creates safe slugs', () => {
@@ -43,4 +45,62 @@ test('buildPredicateLocalName respects casing and has-prefix', () => {
 
   const opts4 = { prefixHas: false, casing: 'camelCase', whenNoHeader: 'ordinal' };
   expect(buildPredicateLocalName('email address', opts4)).toBe('emailAddress');
+});
+
+test('detectHeaderStyle recognizes common field naming schemes', () => {
+  expect(detectHeaderStyle('Meeting Date')).toBe('human');
+  expect(detectHeaderStyle('meetingDate')).toBe('camelCase');
+  expect(detectHeaderStyle('MeetingDate')).toBe('PascalCase');
+  expect(detectHeaderStyle('approval_date')).toBe('snake_case');
+  expect(detectHeaderStyle('LOCATION')).toBe('SHOUT_CASE');
+  expect(detectHeaderStyle('APPROVAL_DATE')).toBe('SHOUTING_SNAKE');
+});
+
+test('buildColumnSchemas normalizes labels, predicates, identifiers, and datatypes', () => {
+  const schemas = buildColumnSchemas({
+    header: ['meetingDate', 'location', 'approval_date'],
+    rows: [['2026-01-01', 'Room 1', '2026-02-01']],
+    treatFirstRowAsHeader: true,
+    predicateOptions: { prefixHas: true, casing: 'snake_case', whenNoHeader: 'ordinal' },
+    basePredicateIri: 'https://example.org/TableNova/',
+    datatypesByColumnKey: {
+      meetingDate: 'http://www.w3.org/2001/XMLSchema#date',
+      approval_date: 'http://www.w3.org/2001/XMLSchema#date'
+    }
+  });
+
+  expect(schemas.map((s) => s.predicateLocalName)).toEqual(['has_meeting_date', 'has_location', 'has_approval_date']);
+  expect(schemas.map((s) => s.label)).toEqual(['Meeting Date', 'Location', 'Approval Date']);
+  expect(schemas.map((s) => s.originalHeader)).toEqual(['meetingDate', 'location', 'approval_date']);
+  expect(schemas[0].datatypeIri).toBe('http://www.w3.org/2001/XMLSchema#date');
+  expect(schemas[1].datatypeIri).toBe('http://www.w3.org/2001/XMLSchema#string');
+});
+
+test('buildColumnSchemas supports editable label and predicate overrides', () => {
+  const schemas = buildColumnSchemas({
+    header: ['meetingDate'],
+    rows: [['2026-01-01']],
+    treatFirstRowAsHeader: true,
+    predicateOptions: { prefixHas: true, casing: 'snake_case', whenNoHeader: 'ordinal' },
+    basePredicateIri: 'https://example.org/TableNova/',
+    columnSchemaOverridesByKey: {
+      meetingDate: { label: 'Session Date', predicateLocalName: 'has_session_date' }
+    }
+  });
+
+  expect(schemas[0].label).toBe('Session Date');
+  expect(schemas[0].predicateLocalName).toBe('has_session_date');
+  expect(schemas[0].predicateIri).toBe('https://example.org/TableNova/has_session_date');
+});
+
+test('buildColumnSchemas suffixes normalized predicate collisions', () => {
+  const schemas = buildColumnSchemas({
+    header: ['location', 'LOCATION'],
+    rows: [['HQ', 'HQ']],
+    treatFirstRowAsHeader: true,
+    predicateOptions: { prefixHas: true, casing: 'snake_case', whenNoHeader: 'ordinal' },
+    basePredicateIri: 'https://example.org/TableNova/'
+  });
+
+  expect(schemas.map((s) => s.predicateLocalName)).toEqual(['has_location', 'has_location_2']);
 });

@@ -2,12 +2,17 @@
  * @file Render helpers (DOM updates) for Table Nova UI.
  */
 
+import { buildColumnSchemas } from '../rdf/schema.js';
+
 /**
  * @typedef {import('../state/types.js').StagedFile} StagedFile
  * @typedef {import('../state/types.js').FileOptions} FileOptions
  */
 
 const XSD = 'http://www.w3.org/2001/XMLSchema#';
+const MIN_PREVIEW_COL_CH = 10;
+const MAX_PREVIEW_COL_CH = 38;
+const ROW_HEADER_COL_CH = 10;
 
 /**
  * Enables or disables the Run button.
@@ -223,10 +228,26 @@ export function buildHeaderOption(staged, onUpdateOptions) {
 
   const label = document.createElement('label');
   label.className = 'table-nova-label';
-  label.textContent = 'Treat first row as header';
+  label.textContent = 'Treat row';
+
+  const input = document.createElement('input');
+  input.className = 'table-nova-input table-nova-input--rownum';
+  input.type = 'number';
+  input.min = '1';
+  input.step = '1';
+  input.value = String(Math.max(1, Number(staged.options?.headerRowNumber || 1)));
+  input.disabled = !cb.checked;
+  input.setAttribute('aria-label', 'Header row number');
+  input.addEventListener('change', (e) => handleHeaderRowNumberChange(e, staged, onUpdateOptions));
+
+  const suffix = document.createElement('span');
+  suffix.className = 'table-nova-label';
+  suffix.textContent = 'as header';
 
   row.appendChild(cb);
   row.appendChild(label);
+  row.appendChild(input);
+  row.appendChild(suffix);
 
   wrap.appendChild(row);
   return wrap;
@@ -243,7 +264,31 @@ export function handleHeaderToggle(e, staged, onUpdateOptions) {
   const target = /** @type {HTMLInputElement|null} */ (e.target instanceof HTMLInputElement ? e.target : null);
   if (!target) return;
 
-  const next = { ...staged.options, treatFirstRowAsHeader: Boolean(target.checked) };
+  const next = {
+    ...staged.options,
+    treatFirstRowAsHeader: Boolean(target.checked),
+    headerRowNumber: Math.max(1, Number(staged.options?.headerRowNumber || 1)),
+    preview: null
+  };
+  onUpdateOptions(staged.id, next);
+}
+
+/**
+ * Handles header row number input.
+ * @param {Event} e
+ * @param {StagedFile} staged
+ * @param {(stagedId: string, nextOptions: FileOptions) => void} onUpdateOptions
+ * @returns {void}
+ */
+export function handleHeaderRowNumberChange(e, staged, onUpdateOptions) {
+  const target = /** @type {HTMLInputElement|null} */ (e.target instanceof HTMLInputElement ? e.target : null);
+  if (!target) return;
+  const value = Math.max(1, Math.floor(Number(target.value || 1)));
+  const next = {
+    ...staged.options,
+    headerRowNumber: value,
+    preview: null
+  };
   onUpdateOptions(staged.id, next);
 }
 
@@ -397,39 +442,94 @@ export function buildPreviewSection(staged, onUpdateOptions, onPreview) {
   const body = document.createElement('div');
   body.className = 'table-nova-preview__body';
 
-  const table = buildPreviewTable(staged);
-  body.appendChild(table);
+  body.appendChild(buildPreviewTable(staged, onUpdateOptions));
 
   const dtHelp = document.createElement('p');
   dtHelp.className = 'table-nova-muted';
   dtHelp.style.margin = '0.75rem 0 0';
-  dtHelp.textContent = 'Datatype selections apply to the whole column (default xsd:string).';
+  dtHelp.textContent = 'Column schema edits drive both instance predicates and the separate ontology artifact.';
 
   body.appendChild(dtHelp);
   container.appendChild(body);
-
-  mountDatatypeSelectHandlers(container, staged, onUpdateOptions);
   return container;
+}
+
+/**
+ * Builds one pivoted schema row.
+ * @param {string} rowLabel
+ * @param {import('../rdf/schema.js').ColumnSchema[]} schemas
+ * @param {(schema: import('../rdf/schema.js').ColumnSchema) => HTMLTableCellElement} buildCell
+ * @returns {HTMLTableRowElement}
+ */
+export function buildSchemaValueRow(rowLabel, schemas, buildCell) {
+  const tr = document.createElement('tr');
+  tr.className = rowLabel === 'Detected' ? 'table-nova-schema-row table-nova-schema-row--first' : 'table-nova-schema-row';
+  const th = document.createElement('th');
+  th.scope = 'row';
+  th.textContent = rowLabel;
+  tr.appendChild(th);
+
+  for (const schema of schemas) {
+    tr.appendChild(buildCell(schema));
+  }
+
+  return tr;
+}
+
+/**
+ * @param {string} value
+ * @returns {HTMLTableCellElement}
+ */
+export function textCell(value) {
+  const cell = document.createElement('td');
+  cell.textContent = value;
+  return cell;
+}
+
+/**
+ * @param {HTMLElement} control
+ * @returns {HTMLTableCellElement}
+ */
+export function controlCell(control) {
+  const cell = document.createElement('td');
+  cell.appendChild(control);
+  return cell;
 }
 
 /**
  * Builds a preview table (first 5 rows).
  * @param {StagedFile} staged
+ * @param {(stagedId: string, nextOptions: FileOptions) => void} onUpdateOptions
  * @returns {HTMLElement}
  */
-export function buildPreviewTable(staged) {
+export function buildPreviewTable(staged, onUpdateOptions) {
   const preview = staged.options?.preview;
   const header = preview?.header || [];
   const rows = preview?.rows || [];
 
+  const wrap = document.createElement('div');
+  wrap.className = 'table-nova-tablewrap table-nova-tablewrap--preview-schema';
+  wrap.setAttribute('role', 'region');
+  wrap.setAttribute('aria-label', 'Data sample and column schema');
+  wrap.tabIndex = 0;
+
   const table = document.createElement('table');
-  table.className = 'table-nova-table';
+  table.className = 'table-nova-table table-nova-table--preview-schema';
 
   const thead = document.createElement('thead');
   const trh = document.createElement('tr');
 
   const effectiveCols = Math.max(header.length, ...(rows.map((r) => r.length)));
   const colKeys = Array.from({ length: effectiveCols }, (_, i) => header[i] || `Column${i + 1}`);
+  const schemas = getPreviewColumnSchemas(staged);
+  const colWidths = estimatePreviewColumnWidths(colKeys, rows, schemas);
+
+  table.appendChild(buildPreviewColGroup(colWidths));
+
+  const rowHeader = document.createElement('th');
+  rowHeader.scope = 'col';
+  rowHeader.textContent = 'Row';
+  trh.appendChild(rowHeader);
 
   for (let i = 0; i < effectiveCols; i += 1) {
     const th = document.createElement('th');
@@ -441,39 +541,132 @@ export function buildPreviewTable(staged) {
   table.appendChild(thead);
 
   const tbody = document.createElement('tbody');
-  for (const r of rows) {
+  rows.forEach((r, rowIndex) => {
     const tr = document.createElement('tr');
+    const th = document.createElement('th');
+    th.scope = 'row';
+    th.textContent = String(rowIndex + 1);
+    tr.appendChild(th);
+
     for (let i = 0; i < effectiveCols; i += 1) {
       const td = document.createElement('td');
       td.textContent = String(r?.[i] ?? '');
       tr.appendChild(td);
     }
     tbody.appendChild(tr);
-  }
+  });
 
-  // Datatype selector row
-  const dtr = document.createElement('tr');
-  dtr.dataset.tableNovaDatatypeRow = '1';
-  for (let i = 0; i < effectiveCols; i += 1) {
-    const td = document.createElement('td');
-    const sel = document.createElement('select');
-    sel.className = 'table-nova-select';
-    sel.dataset.tableNovaDatatypeColIndex = String(i);
-    sel.appendChild(optionOf(`${XSD}string`, 'xsd:string'));
-    sel.appendChild(optionOf(`${XSD}boolean`, 'xsd:boolean'));
-    sel.appendChild(optionOf(`${XSD}integer`, 'xsd:integer'));
-    sel.appendChild(optionOf(`${XSD}decimal`, 'xsd:decimal'));
-    sel.appendChild(optionOf(`${XSD}double`, 'xsd:double'));
-    sel.appendChild(optionOf(`${XSD}dateTime`, 'xsd:dateTime'));
-    sel.appendChild(optionOf(`${XSD}date`, 'xsd:date'));
-    sel.appendChild(optionOf(`${XSD}anyURI`, 'xsd:anyURI'));
-    td.appendChild(sel);
-    dtr.appendChild(td);
-  }
-  tbody.appendChild(dtr);
+  tbody.appendChild(buildSchemaValueRow('Detected', schemas, (schema) => textCell(formatDetectedStyle(schema.detectedStyle))));
+  tbody.appendChild(buildSchemaValueRow('Label', schemas, (schema) => {
+    const input = document.createElement('input');
+    input.className = 'table-nova-input';
+    input.type = 'text';
+    input.value = schema.label;
+    input.setAttribute('aria-label', `Label for ${schema.originalHeader}`);
+    input.addEventListener('change', (e) => handleColumnLabelChange(e, staged, schema.key, onUpdateOptions));
+    return controlCell(input);
+  }));
+  tbody.appendChild(buildSchemaValueRow('Predicate', schemas, (schema) => {
+    const input = document.createElement('input');
+    input.className = 'table-nova-input';
+    input.type = 'text';
+    input.value = schema.predicateLocalName;
+    input.setAttribute('aria-label', `Predicate local name for ${schema.originalHeader}`);
+    input.addEventListener('change', (e) => handleColumnPredicateChange(e, staged, schema.key, onUpdateOptions));
+    return controlCell(input);
+  }));
+  tbody.appendChild(buildSchemaValueRow('Range', schemas, (schema) => {
+    const sel = buildDatatypeSelect(schema.datatypeIri);
+    sel.addEventListener('change', (e) => handleDatatypeChange(e, staged, schema.index, onUpdateOptions));
+    return controlCell(sel);
+  }));
 
   table.appendChild(tbody);
-  return table;
+  wrap.appendChild(table);
+  return wrap;
+}
+
+/**
+ * Builds fixed column widths for the combined preview/schema table.
+ * @param {number[]} colWidths
+ * @returns {HTMLTableColElement}
+ */
+export function buildPreviewColGroup(colWidths) {
+  const group = document.createElement('colgroup');
+  const rowCol = document.createElement('col');
+  rowCol.style.width = `${ROW_HEADER_COL_CH}ch`;
+  group.appendChild(rowCol);
+
+  for (const width of colWidths) {
+    const col = document.createElement('col');
+    col.style.width = `${width}ch`;
+    group.appendChild(col);
+  }
+
+  return group;
+}
+
+/**
+ * Estimates practical wrapped column widths from headers, samples, and schema controls.
+ * @param {string[]} colKeys
+ * @param {string[][]} rows
+ * @param {import('../rdf/schema.js').ColumnSchema[]} schemas
+ * @returns {number[]}
+ */
+export function estimatePreviewColumnWidths(colKeys, rows, schemas) {
+  return colKeys.map((key, index) => {
+    const headerCh = Math.max(MIN_PREVIEW_COL_CH, textWidthCh(key));
+    const maxFromHeader = Math.ceil(headerCh * 1.5);
+    const sampleCh = Math.max(0, ...(rows || []).map((r) => textWidthCh(r?.[index] ?? '')));
+    const schema = schemas?.[index];
+    const schemaCh = Math.max(
+      textWidthCh(schema?.detectedStyle || ''),
+      textWidthCh(schema?.label || ''),
+      textWidthCh(schema?.predicateLocalName || ''),
+      textWidthCh(shortDatatypeLabel(schema?.datatypeIri || `${XSD}string`))
+    );
+    const desired = Math.max(headerCh, sampleCh, schemaCh);
+    return Math.min(MAX_PREVIEW_COL_CH, Math.max(MIN_PREVIEW_COL_CH, Math.min(desired, maxFromHeader)));
+  });
+}
+
+/**
+ * Roughly estimates text width in ch units.
+ * @param {string} value
+ * @returns {number}
+ */
+export function textWidthCh(value) {
+  return String(value ?? '').trim().length || 0;
+}
+
+/**
+ * @param {string} datatypeIri
+ * @returns {string}
+ */
+export function shortDatatypeLabel(datatypeIri) {
+  const s = String(datatypeIri || '');
+  if (s.startsWith(XSD)) return `xsd:${s.slice(XSD.length)}`;
+  return s;
+}
+
+/**
+ * Builds an xsd datatype selector.
+ * @param {string} selected
+ * @returns {HTMLSelectElement}
+ */
+export function buildDatatypeSelect(selected) {
+  const sel = document.createElement('select');
+  sel.className = 'table-nova-select';
+  sel.appendChild(optionOf(`${XSD}string`, 'xsd:string'));
+  sel.appendChild(optionOf(`${XSD}boolean`, 'xsd:boolean'));
+  sel.appendChild(optionOf(`${XSD}integer`, 'xsd:integer'));
+  sel.appendChild(optionOf(`${XSD}decimal`, 'xsd:decimal'));
+  sel.appendChild(optionOf(`${XSD}double`, 'xsd:double'));
+  sel.appendChild(optionOf(`${XSD}dateTime`, 'xsd:dateTime'));
+  sel.appendChild(optionOf(`${XSD}date`, 'xsd:date'));
+  sel.appendChild(optionOf(`${XSD}anyURI`, 'xsd:anyURI'));
+  sel.value = selected || `${XSD}string`;
+  return sel;
 }
 
 /**
@@ -557,6 +750,79 @@ export function handleDatatypeChange(e, staged, colIndex, onUpdateOptions) {
 }
 
 /**
+ * Handles label edits for a column schema.
+ * @param {Event} e
+ * @param {StagedFile} staged
+ * @param {string} key
+ * @param {(stagedId: string, nextOptions: FileOptions) => void} onUpdateOptions
+ * @returns {void}
+ */
+export function handleColumnLabelChange(e, staged, key, onUpdateOptions) {
+  const target = /** @type {HTMLInputElement|null} */ (e.target instanceof HTMLInputElement ? e.target : null);
+  if (!target) return;
+  updateColumnSchemaOverride(staged, key, { label: target.value }, onUpdateOptions);
+}
+
+/**
+ * Handles predicate local-name edits for a column schema.
+ * @param {Event} e
+ * @param {StagedFile} staged
+ * @param {string} key
+ * @param {(stagedId: string, nextOptions: FileOptions) => void} onUpdateOptions
+ * @returns {void}
+ */
+export function handleColumnPredicateChange(e, staged, key, onUpdateOptions) {
+  const target = /** @type {HTMLInputElement|null} */ (e.target instanceof HTMLInputElement ? e.target : null);
+  if (!target) return;
+  updateColumnSchemaOverride(staged, key, { predicateLocalName: target.value }, onUpdateOptions);
+}
+
+/**
+ * Updates one column schema override while preserving other edited values.
+ * @param {StagedFile} staged
+ * @param {string} key
+ * @param {{label?: string, predicateLocalName?: string}} patch
+ * @param {(stagedId: string, nextOptions: FileOptions) => void} onUpdateOptions
+ * @returns {void}
+ */
+export function updateColumnSchemaOverride(staged, key, patch, onUpdateOptions) {
+  const existing = staged.options?.columnSchemaOverridesByKey || {};
+  const nextForKey = { ...(existing[key] || {}), ...patch };
+  const next = {
+    ...staged.options,
+    columnSchemaOverridesByKey: { ...existing, [key]: nextForKey }
+  };
+  onUpdateOptions(staged.id, next);
+}
+
+/**
+ * Builds column schemas from the current preview state.
+ * @param {StagedFile} staged
+ * @returns {import('../rdf/schema.js').ColumnSchema[]}
+ */
+export function getPreviewColumnSchemas(staged) {
+  const preview = staged.options?.preview || { header: [], rows: [] };
+  return buildColumnSchemas({
+    header: preview.header || [],
+    rows: preview.rows || [],
+    treatFirstRowAsHeader: Boolean(staged.options?.treatFirstRowAsHeader ?? true),
+    predicateOptions: staged.options?.predicate,
+    basePredicateIri: '',
+    datatypesByColumnKey: staged.options?.datatypesByColumnKey || {},
+    columnSchemaOverridesByKey: staged.options?.columnSchemaOverridesByKey || {}
+  });
+}
+
+/**
+ * Formats a detected style for display.
+ * @param {string} style
+ * @returns {string}
+ */
+export function formatDetectedStyle(style) {
+  return String(style || 'unknown');
+}
+
+/**
  * Renders outputs into the output area.
  * @param {any} dom
  * @param {any} lastOutput
@@ -564,6 +830,7 @@ export function handleDatatypeChange(e, staged, colIndex, onUpdateOptions) {
  */
 export function renderOutputs(dom, lastOutput) {
   dom.turtleText.value = lastOutput?.turtle || '';
+  if (dom.ontologyText) dom.ontologyText.value = lastOutput?.ontologyTurtle || '';
   dom.jsonldText.value = lastOutput?.jsonldGraph || '';
 
   // Keep raw quads for sorting/filtering mount.
