@@ -384,37 +384,6 @@
   display: block;
 }
 
-/* Toasts */
-.table-nova-toasts {
-  position: fixed;
-  bottom: 1rem;
-  right: 1rem;
-  width: min(380px, calc(100vw - 2rem));
-  display: grid;
-  gap: 0.5rem;
-  z-index: 50;
-}
-
-.table-nova-toast {
-  border: 1px solid color-mix(in srgb, var(--ont-border, #d0d7de) 70%, #000 10%);
-  border-radius: 14px;
-  padding: 0.75rem;
-
-  background: var(--ont-panel-bg, #fff);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--ont-text, #111) 10%, transparent);
-}
-
-.table-nova-toast__title {
-  margin: 0;
-  font-weight: 800;
-  color: var(--ont-text, #111);
-}
-
-.table-nova-toast__body {
-  margin: 0.25rem 0 0;
-  color: color-mix(in srgb, var(--ont-muted, #4b5563) 85%, transparent);
-}
-
 /* ------------------------------------------------------------------ */
 /* Table Nova + Skeleton compatibility layer (place LAST in your CSS)  */
 /* ------------------------------------------------------------------ */

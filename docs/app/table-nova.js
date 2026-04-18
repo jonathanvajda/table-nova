@@ -56,7 +56,7 @@ import {
  */
 
 const log = createLogger({ scope: 'main', enabled: true });
-const toasts = createToastBus({ rootId: 'TableNovaToasts' });
+const toasts = createToastBus({ rootId: 'toast-container' });
 
 const dom = {
   dropzone: /** @type {HTMLElement} */ (document.getElementById('TableNovaDropzone')),

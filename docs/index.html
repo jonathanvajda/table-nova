@@ -12,7 +12,6 @@
   <script>
     (function () {
       const APPBASE_CSS_SOURCES = [
-        /*"./styles/app-base.css", /* local dev copy first */
         "https://jonathanvajda.github.io/OntoEagle/styles/app-base.css",
         "https://jonathanvajda.github.io/table-nova/styles/app-base.css",
       ];
@@ -221,7 +220,7 @@
     </section>
   </main>
 
-  <aside class="table-nova-toasts" id="TableNovaToasts" aria-live="polite" aria-relevant="additions"></aside>
+  <aside id="toast-container" aria-live="polite" aria-relevant="additions"></aside>
 
   <!-- CDN -->
   <script src="./app/imports/n3.min.js"></script>
