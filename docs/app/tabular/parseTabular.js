@@ -116,6 +116,30 @@ export function normalizeRow(row) {
 }
 
 /**
+ * Applies header row options after parsing.
+ * @param {TabularData} tabular
+ * @param {boolean} treatFirstRowAsHeader
+ * @param {number} headerRowNumber 1-based row number
+ * @returns {TabularData}
+ */
+export function applyHeaderRowOptions(tabular, treatFirstRowAsHeader, headerRowNumber = 1) {
+  if (!treatFirstRowAsHeader) return tabular;
+
+  const allRows = [
+    ...(Array.isArray(tabular.header) ? [tabular.header] : []),
+    ...(tabular.rows || [])
+  ];
+  if (allRows.length === 0) return { header: null, rows: [] };
+
+  const requested = Math.max(1, Math.floor(Number(headerRowNumber || 1)));
+  const headerIndex = Math.min(allRows.length - 1, requested - 1);
+  return {
+    header: allRows[headerIndex],
+    rows: allRows.slice(headerIndex + 1)
+  };
+}
+
+/**
  * Parses an XLSX ArrayBuffer into TabularData (first sheet, first row as header candidate).
  * @param {ArrayBuffer} buf
  * @returns {Promise<TabularData>}

@@ -37,7 +37,7 @@ export function createLogger({ scope, enabled }) {
 
 /**
  * @typedef {Object} ToastBus
- * @property {(toast: {title: string, body: string, timeoutMs?: number}) => void} show
+ * @property {(toast: {title: string, body: string, kind?: 'success'|'warning'|'error', timeoutMs?: number}) => void} show
  */
 
 /**
@@ -49,36 +49,41 @@ export function createToastBus({ rootId }) {
   const root = /** @type {HTMLElement|null} */ (document.getElementById(rootId));
 
   /**
-   * @param {string} title
-   * @param {string} body
+   * @param {{title: string, body: string, kind?: 'success'|'warning'|'error'}} toast
    * @returns {HTMLElement}
    */
-  function buildToastEl(title, body) {
-    const el = document.createElement('section');
-    el.className = 'table-nova-toast';
+  function buildToastEl({ title, body, kind }) {
+    const el = document.createElement('div');
+    const status = kind || inferToastKind(title);
+    el.className = `toast ${status} show`;
     el.setAttribute('role', 'status');
 
-    const h = document.createElement('h4');
-    h.className = 'table-nova-toast__title';
-    h.textContent = title;
-
-    const p = document.createElement('p');
-    p.className = 'table-nova-toast__body';
-    p.textContent = body;
-
-    el.appendChild(h);
-    el.appendChild(p);
+    const text = document.createElement('span');
+    text.textContent = body ? `${title}: ${body}` : title;
+    el.appendChild(text);
     return el;
   }
 
   return Object.freeze({
-    show: ({ title, body, timeoutMs = 2600 }) => {
+    show: ({ title, body, kind, timeoutMs = 2600 }) => {
       if (!root) return;
-      const el = buildToastEl(title, body);
+      const el = buildToastEl({ title, body, kind });
       root.appendChild(el);
       window.setTimeout(() => el.remove(), timeoutMs);
     }
   });
+}
+
+/**
+ * Infers a shared toast style from the title used by Table Nova call sites.
+ * @param {string} title
+ * @returns {'success'|'warning'|'error'}
+ */
+export function inferToastKind(title) {
+  const t = String(title || '').toLowerCase();
+  if (t.includes('fail') || t.includes('error')) return 'error';
+  if (t.includes('nothing') || t.includes('removed') || t.includes('cleared') || t.includes('deleted')) return 'warning';
+  return 'success';
 }
 
 /**

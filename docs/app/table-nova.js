@@ -13,17 +13,20 @@ import {
   readFileAsText
 } from './io/fileReaders.js';
 import {
+  applyHeaderRowOptions,
   detectTabularType,
   parseCsvOrTsvText,
   parseXlsxArrayBuffer
 } from './tabular/parseTabular.js';
 import {
-  buildColumnKeys,
-  buildPredicateIrisForColumns,
+  buildColumnSchemas,
   buildRowInstanceIri,
   buildRunGraphIri,
   buildLiteralObject
 } from './rdf/schema.js';
+import {
+  buildOntologyTurtle
+} from './rdf/ontology.js';
 import {
   datasetToSerializations
 } from './rdf/serialize.js';
@@ -53,7 +56,7 @@ import {
  */
 
 const log = createLogger({ scope: 'main', enabled: true });
-const toasts = createToastBus({ rootId: 'TableNovaToasts' });
+const toasts = createToastBus({ rootId: 'toast-container' });
 
 const dom = {
   dropzone: /** @type {HTMLElement} */ (document.getElementById('TableNovaDropzone')),
@@ -63,10 +66,12 @@ const dom = {
   runBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaRunBtn')),
   clearBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaClearBtn')),
   turtleText: /** @type {HTMLTextAreaElement} */ (document.getElementById('TableNovaTurtleText')),
+  ontologyText: /** @type {HTMLTextAreaElement} */ (document.getElementById('TableNovaOntologyText')),
   jsonldText: /** @type {HTMLTextAreaElement} */ (document.getElementById('TableNovaJsonLdText')),
   quadTable: /** @type {HTMLTableElement} */ (document.getElementById('TableNovaQuadTable')),
   quadFilter: /** @type {HTMLInputElement} */ (document.getElementById('TableNovaQuadFilter')),
   exportTurtleBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaExportTurtleBtn')),
+  exportOntologyBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaExportOntologyBtn')),
   exportTrigBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaExportTrigBtn')),
   exportNTriplesBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaExportNTriplesBtn')),
   exportNQuadsBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaExportNQuadsBtn')),
@@ -77,7 +82,7 @@ const dom = {
 
 let stagedFiles = /** @type {StagedFile[]} */ ([]);
 let db = null;
-let lastOutput = null; // { filename, graphIri, turtle, trig, ntriples, nquads, jsonldTriples, jsonldGraph, quads }
+let lastOutput = null; // { filename, graphIri, turtle, ontologyTurtle, trig, ntriples, nquads, jsonldTriples, jsonldGraph, quads, columnSchemas }
 
 /**
  * @param {FileList|File[]} files
@@ -96,10 +101,12 @@ function toStagedFiles(files) {
  * @returns {void}
  */
 function setStagedFiles(next) {
+  const scrollState = captureOptionsScrollState();
   stagedFiles = next;
   renderStagedFiles(dom.fileList, stagedFiles, handleRemoveStagedFile);
   setRunButtonEnabled(dom.runBtn, stagedFiles.length > 0);
   renderFileOptionsPanel(dom.optionsPanel, stagedFiles, handleUpdateFileOptions, handlePreviewFile);
+  restoreOptionsScrollState(scrollState);
 }
 
 /**
@@ -147,10 +154,9 @@ async function handlePreviewFile(stagedId) {
       ? parseXlsxArrayBuffer(await readFileAsArrayBuffer(file))
       : parseCsvOrTsvText(await readFileAsText(file), options.delimiterHint));
 
-    // Render preview rows and datatype pickers via the options panel renderer.
-    // We store the preview metadata into options so it can drive datatype UI.
-    const preview = tabular.rows.slice(0, 5);
-    const header = tabular.header;
+    const normalized = normalizeTabularForOptions(tabular, options);
+    const preview = normalized.rows.slice(0, 5);
+    const header = normalized.header;
 
     const nextOptions = {
       ...options,
@@ -158,7 +164,8 @@ async function handlePreviewFile(stagedId) {
         header,
         rows: preview
       },
-      datatypesByColumnKey: options.datatypesByColumnKey ?? {}
+      datatypesByColumnKey: options.datatypesByColumnKey ?? {},
+      columnSchemaOverridesByKey: options.columnSchemaOverridesByKey ?? {}
     };
 
     handleUpdateFileOptions(stagedId, nextOptions);
@@ -190,8 +197,17 @@ async function handleRun() {
       ? parseXlsxArrayBuffer(await readFileAsArrayBuffer(file))
       : parseCsvOrTsvText(await readFileAsText(file), options.delimiterHint));
 
-    const columnKeys = buildColumnKeys(tabular.header, tabular.rows, options.treatFirstRowAsHeader);
-    const predicateIris = buildPredicateIrisForColumns(columnKeys, options.predicate, TABLENOVA_DEFAULTS.basePredicateIri);
+    const normalized = normalizeTabularForOptions(tabular, options);
+
+    const columnSchemas = buildColumnSchemas({
+      header: normalized.header,
+      rows: normalized.rows,
+      treatFirstRowAsHeader: options.treatFirstRowAsHeader,
+      predicateOptions: options.predicate,
+      basePredicateIri: TABLENOVA_DEFAULTS.basePredicateIri,
+      datatypesByColumnKey: options.datatypesByColumnKey,
+      columnSchemaOverridesByKey: options.columnSchemaOverridesByKey
+    });
 
     const graphIri = buildRunGraphIri({
       baseRunIri: TABLENOVA_DEFAULTS.baseRunIri,
@@ -201,10 +217,10 @@ async function handleRun() {
 
     const { dataset, quads } = await import('./rdf/buildDataset.js').then((m) =>
       m.buildDatasetFromTabular({
-        tabular,
+        tabular: normalized,
         options,
         baseInstanceIri: TABLENOVA_DEFAULTS.baseInstanceIri,
-        predicateIris,
+        columnSchemas,
         graphIri,
         buildRowInstanceIri,
         buildLiteralObject
@@ -216,18 +232,23 @@ async function handleRun() {
       graphIri,
       prefixes: TABLENOVA_DEFAULTS.prefixes
     });
+    const ontologyTurtle = buildOntologyTurtle(columnSchemas, TABLENOVA_DEFAULTS.prefixes);
 
     await putRun(db, {
       graphIri,
       filename: file.name,
       createdAtIso: new Date().toISOString(),
-      quads
+      quads,
+      columnSchemas,
+      ontologyTurtle
     });
 
     lastOutput = {
       filename: file.name,
       graphIri,
       quads,
+      columnSchemas,
+      ontologyTurtle,
       ...ser
     };
 
@@ -293,6 +314,8 @@ async function handleLoadRunToOutput(graphIri) {
       filename: run.filename,
       graphIri: run.graphIri,
       quads: run.quads,
+      columnSchemas: run.columnSchemas || [],
+      ontologyTurtle: run.ontologyTurtle || '',
       ...ser
     };
 
@@ -368,6 +391,7 @@ function handleExport(kind) {
 
   const map = {
     turtle: { text: lastOutput.turtle, ext: 'ttl' },
+    ontology: { text: lastOutput.ontologyTurtle, ext: 'ontology.ttl' },
     trig: { text: lastOutput.trig, ext: 'trig' },
     ntriples: { text: lastOutput.ntriples, ext: 'nt' },
     nquads: { text: lastOutput.nquads, ext: 'nq' },
@@ -386,6 +410,11 @@ function handleExport(kind) {
  * @returns {void}
  */
 function handleExportTurtle() { handleExport('turtle'); }
+
+/**
+ * @returns {void}
+ */
+function handleExportOntology() { handleExport('ontology'); }
 
 /**
  * @returns {void}
@@ -411,6 +440,53 @@ function handleExportJsonLdTriples() { handleExport('jsonldTriples'); }
  * @returns {void}
  */
 function handleExportJsonLdGraph() { handleExport('jsonldGraph'); }
+
+/**
+ * Applies header row options to a parsed table.
+ * @param {import('./tabular/parseTabular.js').TabularData} tabular
+ * @param {import('./state/types.js').FileOptions} options
+ * @returns {import('./tabular/parseTabular.js').TabularData}
+ */
+function normalizeTabularForOptions(tabular, options) {
+  return applyHeaderRowOptions(tabular, Boolean(options?.treatFirstRowAsHeader ?? true), options?.headerRowNumber || 1);
+}
+
+/**
+ * Captures page and options table scroll positions before an options re-render.
+ * @returns {{windowX: number, windowY: number, scrollers: Array<{selector: string, index: number, left: number, top: number}>}}
+ */
+function captureOptionsScrollState() {
+  const scrollers = Array.from(dom.optionsPanel.querySelectorAll('.table-nova-tablewrap')).map((el, index) => ({
+    selector: '.table-nova-tablewrap',
+    index,
+    left: el.scrollLeft,
+    top: el.scrollTop
+  }));
+
+  return {
+    windowX: window.scrollX,
+    windowY: window.scrollY,
+    scrollers
+  };
+}
+
+/**
+ * Restores scroll positions after an options re-render.
+ * @param {{windowX: number, windowY: number, scrollers: Array<{selector: string, index: number, left: number, top: number}>}} state
+ * @returns {void}
+ */
+function restoreOptionsScrollState(state) {
+  requestAnimationFrame(() => {
+    for (const item of state.scrollers || []) {
+      const el = dom.optionsPanel.querySelectorAll(item.selector)[item.index];
+      if (el) {
+        el.scrollLeft = item.left;
+        el.scrollTop = item.top;
+      }
+    }
+    window.scrollTo(state.windowX, state.windowY);
+  });
+}
 
 /**
  * @returns {Promise<void>}
@@ -442,6 +518,7 @@ async function init() {
 
   // Exports
   dom.exportTurtleBtn.addEventListener('click', handleExportTurtle);
+  dom.exportOntologyBtn.addEventListener('click', handleExportOntology);
   dom.exportTrigBtn.addEventListener('click', handleExportTrig);
   dom.exportNTriplesBtn.addEventListener('click', handleExportNTriples);
   dom.exportNQuadsBtn.addEventListener('click', handleExportNQuads);

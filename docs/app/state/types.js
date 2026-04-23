@@ -7,6 +7,10 @@
  */
 
 /**
+ * @typedef {'human'|'camelCase'|'PascalCase'|'snake_case'|'SHOUT_CASE'|'SHOUTING_SNAKE'|'unknown'} HeaderStyle
+ */
+
+/**
  * @typedef {Object} PredicateOptions
  * @property {boolean} prefixHas
  * @property {PredicateCasing} casing
@@ -22,10 +26,12 @@
 /**
  * @typedef {Object} FileOptions
  * @property {boolean} treatFirstRowAsHeader
+ * @property {number} headerRowNumber
  * @property {(','|'\t'|null)} delimiterHint
  * @property {PredicateOptions} predicate
  * @property {PreviewData|null} preview
  * @property {Record<string, string>} datatypesByColumnKey
+ * @property {Record<string, {label?: string, predicateLocalName?: string}>} columnSchemaOverridesByKey
  */
 
 /**

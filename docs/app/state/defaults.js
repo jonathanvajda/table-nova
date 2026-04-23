@@ -11,11 +11,15 @@ export const TABLENOVA_DEFAULTS = Object.freeze({
   prefixes: {
     tablenova: 'https://example.org/TableNova/',
     tablenovaid: 'https://example.org/TableNova/instance#',
-    xsd: 'http://www.w3.org/2001/XMLSchema#'
+    xsd: 'http://www.w3.org/2001/XMLSchema#',
+    owl: 'http://www.w3.org/2002/07/owl#',
+    rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+    dcterms: 'http://purl.org/dc/terms/'
   },
 
   fileOptions: {
     treatFirstRowAsHeader: true,
+    headerRowNumber: 1,
     delimiterHint: null, // ',' or '\t' or null (auto)
     predicate: {
       prefixHas: true,
@@ -25,6 +29,8 @@ export const TABLENOVA_DEFAULTS = Object.freeze({
     // preview cached after user clicks Preview
     preview: null,
     // columnKey -> xsd datatype IRI
-    datatypesByColumnKey: {}
+    datatypesByColumnKey: {},
+    // columnKey -> user-edited schema metadata
+    columnSchemaOverridesByKey: {}
   }
 });
