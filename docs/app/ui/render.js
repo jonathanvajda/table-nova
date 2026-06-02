@@ -826,17 +826,18 @@ export function formatDetectedStyle(style) {
  * Renders outputs into the output area.
  * @param {any} dom
  * @param {any} lastOutput
+ * @param {'abox'|'tbox'|'both'} [scope]
  * @returns {void}
  */
-export function renderOutputs(dom, lastOutput) {
-  dom.turtleText.value = lastOutput?.turtle || '';
-  if (dom.ontologyText) dom.ontologyText.value = lastOutput?.ontologyTurtle || '';
-  dom.jsonldText.value = lastOutput?.jsonldGraph || '';
+export function renderOutputs(dom, lastOutput, scope = 'abox') {
+  const view = lastOutput?.views?.[scope] || lastOutput || {};
+  dom.turtleText.value = view.turtle || '';
+  dom.jsonldText.value = view.jsonldGraph || '';
 
   // Keep raw quads for sorting/filtering mount.
-  dom.quadTable.__TableNovaQuads = lastOutput?.quads || [];
+  dom.quadTable.__TableNovaQuads = view.quads || [];
 
-  renderQuadTable(dom.quadTable, lastOutput?.quads || []);
+  renderQuadTable(dom.quadTable, view.quads || []);
 }
 
 /**

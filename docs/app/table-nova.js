@@ -25,7 +25,8 @@ import {
   buildLiteralObject
 } from './rdf/schema.js';
 import {
-  buildOntologyTurtle
+  buildOntologyDataset,
+  ontologyRecordsFromDataset
 } from './rdf/ontology.js';
 import {
   datasetToSerializations
@@ -66,23 +67,22 @@ const dom = {
   runBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaRunBtn')),
   clearBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaClearBtn')),
   turtleText: /** @type {HTMLTextAreaElement} */ (document.getElementById('TableNovaTurtleText')),
-  ontologyText: /** @type {HTMLTextAreaElement} */ (document.getElementById('TableNovaOntologyText')),
   jsonldText: /** @type {HTMLTextAreaElement} */ (document.getElementById('TableNovaJsonLdText')),
   quadTable: /** @type {HTMLTableElement} */ (document.getElementById('TableNovaQuadTable')),
   quadFilter: /** @type {HTMLInputElement} */ (document.getElementById('TableNovaQuadFilter')),
   exportTurtleBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaExportTurtleBtn')),
-  exportOntologyBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaExportOntologyBtn')),
   exportTrigBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaExportTrigBtn')),
   exportNTriplesBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaExportNTriplesBtn')),
   exportNQuadsBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaExportNQuadsBtn')),
   exportJsonLdTriplesBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaExportJsonLdTriplesBtn')),
   exportJsonLdGraphBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaExportJsonLdGraphBtn')),
+  outputScopeInputs: /** @type {NodeListOf<HTMLInputElement>} */ (document.querySelectorAll('input[name="TableNovaOutputScope"]')),
   runList: /** @type {HTMLElement} */ (document.getElementById('TableNovaRunList'))
 };
 
 let stagedFiles = /** @type {StagedFile[]} */ ([]);
 let db = null;
-let lastOutput = null; // { filename, graphIri, turtle, ontologyTurtle, trig, ntriples, nquads, jsonldTriples, jsonldGraph, quads, columnSchemas }
+let lastOutput = null; // { filename, graphIri, views: {abox, tbox, both}, quads, columnSchemas }
 
 /**
  * @param {FileList|File[]} files
@@ -227,12 +227,13 @@ async function handleRun() {
       })
     );
 
-    const ser = await datasetToSerializations({
+    const outputPackage = await buildOutputPackage({
       dataset,
       graphIri,
-      prefixes: TABLENOVA_DEFAULTS.prefixes
+      filename: file.name,
+      quads,
+      columnSchemas
     });
-    const ontologyTurtle = buildOntologyTurtle(columnSchemas, TABLENOVA_DEFAULTS.prefixes);
 
     await putRun(db, {
       graphIri,
@@ -240,19 +241,12 @@ async function handleRun() {
       createdAtIso: new Date().toISOString(),
       quads,
       columnSchemas,
-      ontologyTurtle
+      ontologyTurtle: outputPackage.views.tbox.turtle
     });
 
-    lastOutput = {
-      filename: file.name,
-      graphIri,
-      quads,
-      columnSchemas,
-      ontologyTurtle,
-      ...ser
-    };
+    lastOutput = outputPackage;
 
-    renderOutputs(dom, lastOutput);
+    renderCurrentOutputs();
     mountTableSortingAndFiltering(dom.quadTable, dom.quadFilter);
     await refreshRunsList();
 
@@ -304,22 +298,15 @@ async function handleLoadRunToOutput(graphIri) {
       m.datasetFromQuads(run.quads)
     );
 
-    const ser = await datasetToSerializations({
+    lastOutput = await buildOutputPackage({
       dataset,
       graphIri,
-      prefixes: TABLENOVA_DEFAULTS.prefixes
+      filename: run.filename,
+      quads: run.quads || [],
+      columnSchemas: run.columnSchemas || []
     });
 
-    lastOutput = {
-      filename: run.filename,
-      graphIri: run.graphIri,
-      quads: run.quads,
-      columnSchemas: run.columnSchemas || [],
-      ontologyTurtle: run.ontologyTurtle || '',
-      ...ser
-    };
-
-    renderOutputs(dom, lastOutput);
+    renderCurrentOutputs();
     mountTableSortingAndFiltering(dom.quadTable, dom.quadFilter);
     toasts.show({ title: 'Loaded', body: 'Run loaded from IndexedDB.' });
   }, (err) => {
@@ -388,15 +375,17 @@ function handleExport(kind) {
 
   const base = lastOutput.filename.replace(/\.[^.]+$/, '');
   const graphSlug = lastOutput.graphIri.split('/').slice(-2).join('_').replace(/[^a-zA-Z0-9._-]/g, '_');
+  const scope = getOutputScope();
+  const view = lastOutput.views?.[scope];
+  if (!view) return;
 
   const map = {
-    turtle: { text: lastOutput.turtle, ext: 'ttl' },
-    ontology: { text: lastOutput.ontologyTurtle, ext: 'ontology.ttl' },
-    trig: { text: lastOutput.trig, ext: 'trig' },
-    ntriples: { text: lastOutput.ntriples, ext: 'nt' },
-    nquads: { text: lastOutput.nquads, ext: 'nq' },
-    jsonldTriples: { text: lastOutput.jsonldTriples, ext: 'jsonld' },
-    jsonldGraph: { text: lastOutput.jsonldGraph, ext: 'jsonld' }
+    turtle: { text: view.turtle, ext: `${scope}.ttl` },
+    trig: { text: view.trig, ext: `${scope}.trig` },
+    ntriples: { text: view.ntriples, ext: `${scope}.nt` },
+    nquads: { text: view.nquads, ext: `${scope}.nq` },
+    jsonldTriples: { text: view.jsonldTriples, ext: `${scope}.jsonld` },
+    jsonldGraph: { text: view.jsonldGraph, ext: `${scope}.dataset.jsonld` }
   };
 
   const pick = map[kind];
@@ -410,11 +399,6 @@ function handleExport(kind) {
  * @returns {void}
  */
 function handleExportTurtle() { handleExport('turtle'); }
-
-/**
- * @returns {void}
- */
-function handleExportOntology() { handleExport('ontology'); }
 
 /**
  * @returns {void}
@@ -440,6 +424,70 @@ function handleExportJsonLdTriples() { handleExport('jsonldTriples'); }
  * @returns {void}
  */
 function handleExportJsonLdGraph() { handleExport('jsonldGraph'); }
+
+/**
+ * @returns {'abox'|'tbox'|'both'}
+ */
+function getOutputScope() {
+  const selected = Array.from(dom.outputScopeInputs || []).find((input) => input.checked)?.value;
+  return selected === 'tbox' || selected === 'both' ? selected : 'abox';
+}
+
+/**
+ * @returns {void}
+ */
+function renderCurrentOutputs() {
+  renderOutputs(dom, lastOutput, getOutputScope());
+}
+
+/**
+ * @param {{dataset: any, graphIri: string, filename: string, quads: any[], columnSchemas: any[]}} params
+ * @returns {Promise<any>}
+ */
+async function buildOutputPackage({ dataset, graphIri, filename, quads, columnSchemas }) {
+  const tboxDataset = buildOntologyDataset(columnSchemas);
+  const bothDataset = mergeDatasets(dataset, tboxDataset);
+  const tboxQuads = ontologyRecordsFromDataset(tboxDataset);
+  const prefixes = TABLENOVA_DEFAULTS.prefixes;
+
+  const [aboxSer, tboxSer, bothSer] = await Promise.all([
+    datasetToSerializations({ dataset, graphIri, prefixes }),
+    datasetToSerializations({ dataset: tboxDataset, graphIri, prefixes }),
+    datasetToSerializations({ dataset: bothDataset, graphIri, prefixes })
+  ]);
+
+  const views = {
+    abox: { ...aboxSer, quads: quads || [] },
+    tbox: { ...tboxSer, quads: tboxQuads },
+    both: { ...bothSer, quads: [...(quads || []), ...tboxQuads] }
+  };
+
+  return {
+    filename,
+    graphIri,
+    quads,
+    columnSchemas,
+    ontologyTurtle: tboxSer.turtle,
+    views,
+    ...aboxSer
+  };
+}
+
+/**
+ * @param  {...any} datasets
+ * @returns {any}
+ */
+function mergeDatasets(...datasets) {
+  const N3 = /** @type {any} */ (globalThis).N3;
+  const { Store } = N3;
+  const out = new Store();
+  for (const ds of datasets) {
+    for (const q of ds?.getQuads?.(null, null, null, null) || []) {
+      out.addQuad(q);
+    }
+  }
+  return out;
+}
 
 /**
  * Applies header row options to a parsed table.
@@ -518,12 +566,12 @@ async function init() {
 
   // Exports
   dom.exportTurtleBtn.addEventListener('click', handleExportTurtle);
-  dom.exportOntologyBtn.addEventListener('click', handleExportOntology);
   dom.exportTrigBtn.addEventListener('click', handleExportTrig);
   dom.exportNTriplesBtn.addEventListener('click', handleExportNTriples);
   dom.exportNQuadsBtn.addEventListener('click', handleExportNQuads);
   dom.exportJsonLdTriplesBtn.addEventListener('click', handleExportJsonLdTriples);
   dom.exportJsonLdGraphBtn.addEventListener('click', handleExportJsonLdGraph);
+  dom.outputScopeInputs.forEach((input) => input.addEventListener('change', renderCurrentOutputs));
 
   toasts.show({ title: 'Ready', body: 'Drop a file to begin.' });
 }

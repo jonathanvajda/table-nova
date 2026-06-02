@@ -5,7 +5,9 @@ import {
   buildPredicateLocalName,
   tokenizeWords,
   detectHeaderStyle,
-  buildColumnSchemas
+  buildColumnSchemas,
+  buildRowInstanceIri,
+  ensurePathIriBase
 } from '../docs/app/rdf/schema.js';
 
 test('slugify creates safe slugs', () => {
@@ -103,4 +105,21 @@ test('buildColumnSchemas suffixes normalized predicate collisions', () => {
   });
 
   expect(schemas.map((s) => s.predicateLocalName)).toEqual(['has_location', 'has_location_2']);
+});
+
+test('buildRowInstanceIri uses path-style identifiers without fragments or query strings', () => {
+  const iri = buildRowInstanceIri({
+    baseInstanceIri: 'https://example.org/TableNova/instance#',
+    rowIndex: 5
+  });
+
+  expect(iri).toMatch(/^https:\/\/example\.org\/TableNova\/instance\/row-000006-[0-9a-f-]{36}$/);
+  expect(iri).not.toContain('?row=');
+  expect(iri).not.toContain('#/');
+});
+
+test('ensurePathIriBase normalizes fragment and query bases to path bases', () => {
+  expect(ensurePathIriBase('https://example.org/TableNova/instance#')).toBe('https://example.org/TableNova/instance/');
+  expect(ensurePathIriBase('https://example.org/TableNova/instance?')).toBe('https://example.org/TableNova/instance/');
+  expect(ensurePathIriBase('https://example.org/TableNova/instance/')).toBe('https://example.org/TableNova/instance/');
 });

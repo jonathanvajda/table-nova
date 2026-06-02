@@ -98,11 +98,5 @@ export async function rdfToJsonLd(nquadsOrNtriples, isDataset, graphIri) {
     return JSON.stringify(doc, null, 2);
   }
 
-  // For dataset view, wrap in a named graph container with @graph.
-  const named = {
-    '@context': {},
-    '@id': graphIri || 'urn:TableNova:graph',
-    '@graph': doc
-  };
-  return JSON.stringify(named, null, 2);
+  return JSON.stringify(doc, null, 2);
 }

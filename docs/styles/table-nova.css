@@ -349,6 +349,7 @@
   gap: 0.5rem;
   flex-wrap: wrap;
   margin-bottom: 0.75rem;
+  align-items: center;
 }
 
 .table-nova-tab {
@@ -372,6 +373,42 @@
 }
 
 .table-nova-tab--active {
+  background: var(--ont-accent-soft, #e0e7ff);
+  border-color: color-mix(in srgb, var(--ont-accent, #2563eb) 35%, var(--ont-border, #d0d7de));
+}
+
+.table-nova-tab--session {
+  margin-left: auto;
+}
+
+.table-nova-output-scope {
+  border: 0;
+  padding: 0;
+  margin: 0 0 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.table-nova-output-scope legend {
+  margin-right: 0.25rem;
+  padding: 0;
+}
+
+.table-nova-radiochip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--ont-border, #d0d7de) 70%, #000 10%);
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  color: var(--ont-text, #111);
+  background: color-mix(in srgb, var(--ont-text, #111) 2%, var(--ont-panel-bg, #fff));
+  font-weight: 700;
+}
+
+.table-nova-radiochip:has(input:checked) {
   background: var(--ont-accent-soft, #e0e7ff);
   border-color: color-mix(in srgb, var(--ont-accent, #2563eb) 35%, var(--ont-border, #d0d7de));
 }
@@ -494,4 +531,54 @@
 .table-nova-checkboxrow input[type="checkbox"] {
   width: 1.05rem;
   height: 1.05rem;
+}
+
+/* Output controls use px so Skeleton's 10px root rem scale cannot skew them. */
+.table-nova-main .table-nova-tabs .table-nova-tab {
+  box-sizing: border-box;
+  font-size: 13px;
+  line-height: 1.2;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+}
+
+.table-nova-main .table-nova-output-scope {
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.table-nova-main .table-nova-output-scope .table-nova-label {
+  flex-basis: 100%;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.table-nova-main .table-nova-radiochip {
+  box-sizing: border-box;
+  font-size: 14px;
+  line-height: 1.2;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+}
+
+.table-nova-main .table-nova-radiochip input {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+}
+
+.table-nova-main .table-nova-output-actions {
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.table-nova-main .table-nova-output-actions .table-nova-btn {
+  box-sizing: border-box;
+  font-size: 14px;
+  line-height: 1.2;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 10px;
 }

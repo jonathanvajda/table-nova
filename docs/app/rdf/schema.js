@@ -382,30 +382,34 @@ function toPredicatePascalToken(token) {
  * @returns {string}
  */
 export function buildRowInstanceIri({ baseInstanceIri, rowIndex }) {
-  const base = ensureTrailingSlash(baseInstanceIri);
+  const base = ensurePathIriBase(baseInstanceIri);
   const uuid = crypto.randomUUID();
-  // Keep a hint of ordering without leaking data: row index.
-  return `${base}${uuid}?row=${encodeURIComponent(String(rowIndex))}`;
+  const rowNumber = String(Math.max(0, Math.floor(Number(rowIndex || 0))) + 1).padStart(6, '0');
+  return `${base}row-${rowNumber}-${uuid}`;
+}
+
+/**
+ * Normalizes an instance base for path-style minted IRIs.
+ * @param {string} iri
+ * @returns {string}
+ */
+export function ensurePathIriBase(iri) {
+  return ensureTrailingSlash(String(iri ?? '').trim().replace(/[?#]+$/g, ''));
 }
 
 let _n3Mod = null;
 
 /**
- * Builds an RDFJS term for a cell value according to an xsd datatype.
- * Special case: if datatype is xsd:anyURI and value looks like an absolute IRI, returns a NamedNode.
+ * Builds an RDFJS literal term for a cell value according to an xsd datatype.
  * @param {string} value
  * @param {string} datatypeIri
- * @returns {Promise<any>} RDFJS Term (NamedNode or Literal)
+ * @returns {Promise<any>} RDFJS Literal
  */
 export async function buildLiteralObject(value, datatypeIri) {
   const N3 = await getN3();
   const { DataFactory } = N3;
   const v = String(value ?? '').trim();
   const dt = String(datatypeIri ?? 'http://www.w3.org/2001/XMLSchema#string');
-
-  if (dt.endsWith('#anyURI') && looksLikeAbsoluteIri(v)) {
-    return DataFactory.namedNode(v);
-  }
 
   if (dt.endsWith('#boolean')) {
     return DataFactory.literal(toBooleanLexical(v), DataFactory.namedNode(dt));
@@ -484,6 +488,9 @@ export function toDateTimeLexical(s) {
  */
 async function getN3() {
   if (_n3Mod) return _n3Mod;
-  _n3Mod = await import('https://esm.sh/n3@2.0.1');
+  _n3Mod = /** @type {any} */ (globalThis).N3;
+  if (!_n3Mod) {
+    throw new Error('Global N3 not found. Ensure ./app/imports/n3.min.js is loaded before Table Nova modules.');
+  }
   return _n3Mod;
 }
