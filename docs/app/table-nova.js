@@ -29,7 +29,8 @@ import {
   ontologyRecordsFromDataset
 } from './rdf/ontology.js';
 import {
-  datasetToSerializations
+  rdfToJsonLd,
+  writeWithN3
 } from './rdf/serialize.js';
 import {
   buildDraftMetadataArtifacts,
@@ -88,7 +89,7 @@ const dom = {
 
 let stagedFiles = /** @type {StagedFile[]} */ ([]);
 let db = null;
-let lastOutput = null; // { filename, graphIri, views: {abox, tbox, both}, quads, columnSchemas, sampleValuesByPredicate }
+let lastOutput = null; // { filename, graphIri, datasets, quadsByScope, views, columnSchemas, sampleValuesByPredicate }
 
 /**
  * @param {FileList|File[]} files
@@ -381,29 +382,35 @@ function handleFileInputChange() {
  * @returns {void}
  */
 function handleExport(kind) {
-  if (!lastOutput) {
-    toasts.show({ title: 'Nothing to export', body: 'Run a file or load a saved run first.' });
-    return;
-  }
+  void safeAsync(log, async () => {
+    if (!lastOutput) {
+      toasts.show({ title: 'Nothing to export', body: 'Run a file or load a saved run first.' });
+      return;
+    }
 
-  const scope = getOutputScope();
-  const view = lastOutput.views?.[scope];
-  if (!view) return;
+    const scope = getOutputScope();
+    await ensureViewReady(scope, kind);
 
-  const map = {
-    turtle: { text: view.turtle, ext: `${scope}.ttl` },
-    trig: { text: view.trig, ext: `${scope}.trig` },
-    ntriples: { text: view.ntriples, ext: `${scope}.nt` },
-    nquads: { text: view.nquads, ext: `${scope}.nq` },
-    jsonldTriples: { text: view.jsonldTriples, ext: `${scope}.jsonld` },
-    jsonldGraph: { text: view.jsonldGraph, ext: `${scope}.dataset.jsonld` }
-  };
+    const view = lastOutput.views?.[scope];
+    if (!view) return;
 
-  const pick = map[kind];
-  if (!pick) return;
+    const map = {
+      turtle: { text: view.turtle, ext: `${scope}.ttl` },
+      trig: { text: view.trig, ext: `${scope}.trig` },
+      ntriples: { text: view.ntriples, ext: `${scope}.nt` },
+      nquads: { text: view.nquads, ext: `${scope}.nq` },
+      jsonldTriples: { text: view.jsonldTriples, ext: `${scope}.jsonld` },
+      jsonldGraph: { text: view.jsonldGraph, ext: `${scope}.dataset.jsonld` }
+    };
 
-  downloadTextFile(`${buildExportBaseName(lastOutput)}.${pick.ext}`, pick.text);
-  toasts.show({ title: 'Exported', body: `Downloaded ${pick.ext.toUpperCase()}.` });
+    const pick = map[kind];
+    if (!pick?.text) return;
+
+    downloadTextFile(`${buildExportBaseName(lastOutput)}.${pick.ext}`, pick.text);
+    toasts.show({ title: 'Exported', body: `Downloaded ${pick.ext.toUpperCase()}.` });
+  }, (err) => {
+    toasts.show({ title: 'Export failed', body: String(err?.message || err) });
+  });
 }
 
 /**
@@ -448,7 +455,7 @@ function buildCurrentDraftMetadata() {
   return buildDraftMetadataArtifacts({
     filename: lastOutput.filename,
     columnSchemas: lastOutput.columnSchemas || [],
-    quads: lastOutput.quads || [],
+    quads: lastOutput.quadsByScope?.abox || [],
     sampleValuesByPredicate: lastOutput.sampleValuesByPredicate || {}
   });
 }
@@ -495,7 +502,19 @@ function getOutputScope() {
  * @returns {void}
  */
 function renderCurrentOutputs() {
-  renderOutputs(dom, lastOutput, getOutputScope());
+  void safeAsync(log, async () => {
+    if (!lastOutput) {
+      renderOutputs(dom, null, getOutputScope(), getActiveOutputTab());
+      return;
+    }
+
+    const scope = getOutputScope();
+    const tab = getActiveOutputTab();
+    await ensureViewReady(scope, tab === 'ntriples' ? 'quadTable' : tab);
+    renderOutputs(dom, lastOutput, scope, tab);
+  }, (err) => {
+    toasts.show({ title: 'Render failed', body: String(err?.message || err) });
+  });
 }
 
 /**
@@ -503,33 +522,218 @@ function renderCurrentOutputs() {
  * @returns {Promise<any>}
  */
 async function buildOutputPackage({ dataset, graphIri, filename, quads, columnSchemas, sampleValuesByPredicate = {} }) {
-  const tboxDataset = buildOntologyDataset(columnSchemas);
-  const bothDataset = mergeDatasets(dataset, tboxDataset);
-  const tboxQuads = ontologyRecordsFromDataset(tboxDataset);
   const prefixes = TABLENOVA_DEFAULTS.prefixes;
-
-  const [aboxSer, tboxSer, bothSer] = await Promise.all([
-    datasetToSerializations({ dataset, graphIri, prefixes }),
-    datasetToSerializations({ dataset: tboxDataset, graphIri, prefixes }),
-    datasetToSerializations({ dataset: bothDataset, graphIri, prefixes })
-  ]);
-
-  const views = {
-    abox: { ...aboxSer, quads: quads || [] },
-    tbox: { ...tboxSer, quads: tboxQuads },
-    both: { ...bothSer, quads: [...(quads || []), ...tboxQuads] }
-  };
+  const aboxTurtle = await serializeScopeKind(dataset, graphIri, prefixes, 'turtle');
 
   return {
     filename,
     graphIri,
-    quads,
     columnSchemas,
     sampleValuesByPredicate,
-    ontologyTurtle: tboxSer.turtle,
-    views,
-    ...aboxSer
+    prefixes,
+    datasets: {
+      abox: dataset,
+      tbox: null,
+      both: null
+    },
+    quadsByScope: {
+      abox: quads || [],
+      tbox: null,
+      both: null
+    },
+    views: {
+      abox: createEmptyView({ turtle: aboxTurtle }),
+      tbox: createEmptyView(),
+      both: createEmptyView()
+    }
   };
+}
+
+/**
+ * @param {{
+ *   turtle?: string|null,
+ *   trig?: string|null,
+ *   ntriples?: string|null,
+ *   nquads?: string|null,
+ *   jsonldTriples?: string|null,
+ *   jsonldGraph?: string|null
+ * }} [seed]
+ * @returns {{turtle: string|null, trig: string|null, ntriples: string|null, nquads: string|null, jsonldTriples: string|null, jsonldGraph: string|null}}
+ */
+function createEmptyView(seed = {}) {
+  return {
+    turtle: seed.turtle ?? null,
+    trig: seed.trig ?? null,
+    ntriples: seed.ntriples ?? null,
+    nquads: seed.nquads ?? null,
+    jsonldTriples: seed.jsonldTriples ?? null,
+    jsonldGraph: seed.jsonldGraph ?? null
+  };
+}
+
+/**
+ * @returns {'turtle'|'ntriples'|'jsonld'|'session'}
+ */
+function getActiveOutputTab() {
+  const active = /** @type {HTMLButtonElement|null} */ (document.querySelector('.table-nova-tabs .table-nova-tab--active'));
+  const tab = active?.getAttribute('data-tab');
+  return tab === 'ntriples' || tab === 'jsonld' || tab === 'session' ? tab : 'turtle';
+}
+
+/**
+ * @param {'abox'|'tbox'|'both'} scope
+ * @param {'turtle'|'ntriples'|'jsonld'|'session'|'trig'|'nquads'|'jsonldTriples'|'jsonldGraph'|'quadTable'} target
+ * @returns {Promise<void>}
+ */
+async function ensureViewReady(scope, target) {
+  if (!lastOutput) return;
+  if (target === 'session') return;
+
+  const { dataset } = await ensureScopeMaterials(scope);
+  const view = lastOutput.views?.[scope];
+  if (!view) return;
+
+  if (target === 'quadTable') {
+    return;
+  }
+
+  if (target === 'turtle') {
+    if (view.turtle == null) {
+      view.turtle = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'turtle');
+    }
+    return;
+  }
+
+  if (target === 'ntriples') {
+    if (view.ntriples == null) {
+      view.ntriples = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'ntriples');
+    }
+    return;
+  }
+
+  if (target === 'jsonld') {
+    if (view.jsonldGraph == null) {
+      view.jsonldGraph = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'jsonldGraph');
+    }
+    return;
+  }
+
+  if (target === 'trig' && view.trig == null) {
+    view.trig = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'trig');
+    return;
+  }
+
+  if (target === 'nquads' && view.nquads == null) {
+    view.nquads = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'nquads');
+    return;
+  }
+
+  if (target === 'jsonldGraph' && view.jsonldGraph == null) {
+    view.jsonldGraph = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'jsonldGraph');
+    return;
+  }
+
+  if (target === 'jsonldTriples' && view.jsonldTriples == null) {
+    view.jsonldTriples = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'jsonldTriples');
+    return;
+  }
+
+}
+
+/**
+ * @param {'abox'|'tbox'|'both'} scope
+ * @returns {Promise<{dataset: any, quads: any[]}>}
+ */
+async function ensureScopeMaterials(scope) {
+  if (!lastOutput) {
+    return { dataset: null, quads: [] };
+  }
+
+  if (scope === 'abox') {
+    return {
+      dataset: lastOutput.datasets.abox,
+      quads: lastOutput.quadsByScope.abox || []
+    };
+  }
+
+  if (scope === 'tbox') {
+    if (!lastOutput.datasets.tbox) {
+      lastOutput.datasets.tbox = buildOntologyDataset(lastOutput.columnSchemas || []);
+    }
+    if (!lastOutput.quadsByScope.tbox) {
+      lastOutput.quadsByScope.tbox = ontologyRecordsFromDataset(lastOutput.datasets.tbox);
+    }
+    return {
+      dataset: lastOutput.datasets.tbox,
+      quads: lastOutput.quadsByScope.tbox || []
+    };
+  }
+
+  const abox = await ensureScopeMaterials('abox');
+  const tbox = await ensureScopeMaterials('tbox');
+
+  if (!lastOutput.datasets.both) {
+    lastOutput.datasets.both = mergeDatasets(abox.dataset, tbox.dataset);
+  }
+  if (!lastOutput.quadsByScope.both) {
+    lastOutput.quadsByScope.both = [...(abox.quads || []), ...(tbox.quads || [])];
+  }
+
+  return {
+    dataset: lastOutput.datasets.both,
+    quads: lastOutput.quadsByScope.both || []
+  };
+}
+
+/**
+ * @param {any} dataset
+ * @param {string} graphIri
+ * @param {Record<string, string>} prefixes
+ * @param {'turtle'|'trig'|'ntriples'|'nquads'|'jsonldGraph'|'jsonldTriples'} kind
+ * @returns {Promise<string>}
+ */
+async function serializeScopeKind(dataset, graphIri, prefixes, kind) {
+  if (!dataset) return '';
+
+  if (kind === 'turtle') {
+    return writeWithN3(toTriplesStore(dataset), { format: 'Turtle', prefixes });
+  }
+
+  if (kind === 'trig') {
+    return writeWithN3(dataset, { format: 'application/trig', prefixes });
+  }
+
+  if (kind === 'ntriples') {
+    return writeWithN3(toTriplesStore(dataset), { format: 'N-Triples' });
+  }
+
+  if (kind === 'nquads') {
+    return writeWithN3(dataset, { format: 'N-Quads' });
+  }
+
+  if (kind === 'jsonldTriples') {
+    const ntriples = await writeWithN3(toTriplesStore(dataset), { format: 'N-Triples' });
+    return rdfToJsonLd(ntriples, false);
+  }
+
+  const nquads = await writeWithN3(dataset, { format: 'N-Quads' });
+  return rdfToJsonLd(nquads, true, graphIri);
+}
+
+/**
+ * @param {any} dataset
+ * @returns {any}
+ */
+function toTriplesStore(dataset) {
+  const N3 = /** @type {any} */ (globalThis).N3;
+  const { DataFactory, Store } = N3;
+  const triplesStore = new Store();
+
+  for (const q of dataset?.getQuads?.(null, null, null, null) || []) {
+    triplesStore.addQuad(DataFactory.quad(q.subject, q.predicate, q.object));
+  }
+
+  return triplesStore;
 }
 
 /**
@@ -664,6 +868,11 @@ async function init() {
   dom.exportDataDictionaryBtn.addEventListener('click', handleExportDataDictionary);
   dom.exportJsonSchemaBtn.addEventListener('click', handleExportJsonSchema);
   dom.outputScopeInputs.forEach((input) => input.addEventListener('change', renderCurrentOutputs));
+  document.querySelector('.table-nova-tabs')?.addEventListener('click', (e) => {
+    const target = /** @type {HTMLElement|null} */ (e.target instanceof HTMLElement ? e.target : null);
+    if (!target?.closest('button[data-tab]')) return;
+    renderCurrentOutputs();
+  });
 
   toasts.show({ title: 'Ready', body: 'Drop a file to begin.' });
 }

@@ -827,17 +827,33 @@ export function formatDetectedStyle(style) {
  * @param {any} dom
  * @param {any} lastOutput
  * @param {'abox'|'tbox'|'both'} [scope]
+ * @param {'turtle'|'ntriples'|'jsonld'|'session'} [activeTab]
  * @returns {void}
  */
-export function renderOutputs(dom, lastOutput, scope = 'abox') {
-  const view = lastOutput?.views?.[scope] || lastOutput || {};
-  dom.turtleText.value = view.turtle || '';
-  dom.jsonldText.value = view.jsonldGraph || '';
+export function renderOutputs(dom, lastOutput, scope = 'abox', activeTab = 'turtle') {
+  if (!lastOutput) {
+    dom.turtleText.value = '';
+    dom.jsonldText.value = '';
+    dom.quadTable.__TableNovaQuads = [];
+    renderQuadTable(dom.quadTable, []);
+    return;
+  }
 
-  // Keep raw quads for sorting/filtering mount.
-  dom.quadTable.__TableNovaQuads = view.quads || [];
+  const view = lastOutput?.views?.[scope] || {};
+  const quads = lastOutput?.quadsByScope?.[scope] || [];
 
-  renderQuadTable(dom.quadTable, view.quads || []);
+  if (activeTab === 'turtle') {
+    dom.turtleText.value = view.turtle || '';
+  }
+
+  if (activeTab === 'jsonld') {
+    dom.jsonldText.value = view.jsonldGraph || '';
+  }
+
+  if (activeTab === 'ntriples') {
+    dom.quadTable.__TableNovaQuads = quads;
+    renderQuadTable(dom.quadTable, quads);
+  }
 }
 
 /**
