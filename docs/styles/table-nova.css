@@ -42,6 +42,13 @@
   color: var(--ont-muted, rgba(0,0,0,0.65));
 }
 
+.table-nova-output-metaexport {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 /* Dropzone */
 .table-nova-dropzone {
   position: relative;

@@ -32,6 +32,10 @@ import {
   datasetToSerializations
 } from './rdf/serialize.js';
 import {
+  buildDraftMetadataArtifacts,
+  buildSampleValuesByPredicate
+} from './metadataDrafts.js';
+import {
   openTableNovaDb,
   putRun,
   listRuns,
@@ -76,13 +80,15 @@ const dom = {
   exportNQuadsBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaExportNQuadsBtn')),
   exportJsonLdTriplesBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaExportJsonLdTriplesBtn')),
   exportJsonLdGraphBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaExportJsonLdGraphBtn')),
+  exportDataDictionaryBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaExportDataDictionaryBtn')),
+  exportJsonSchemaBtn: /** @type {HTMLButtonElement} */ (document.getElementById('TableNovaExportJsonSchemaBtn')),
   outputScopeInputs: /** @type {NodeListOf<HTMLInputElement>} */ (document.querySelectorAll('input[name="TableNovaOutputScope"]')),
   runList: /** @type {HTMLElement} */ (document.getElementById('TableNovaRunList'))
 };
 
 let stagedFiles = /** @type {StagedFile[]} */ ([]);
 let db = null;
-let lastOutput = null; // { filename, graphIri, views: {abox, tbox, both}, quads, columnSchemas }
+let lastOutput = null; // { filename, graphIri, views: {abox, tbox, both}, quads, columnSchemas, sampleValuesByPredicate }
 
 /**
  * @param {FileList|File[]} files
@@ -208,6 +214,10 @@ async function handleRun() {
       datatypesByColumnKey: options.datatypesByColumnKey,
       columnSchemaOverridesByKey: options.columnSchemaOverridesByKey
     });
+    const sampleValuesByPredicate = buildSampleValuesByPredicate({
+      rows: getProcessedDataRows(normalized, options),
+      columnSchemas
+    });
 
     const graphIri = buildRunGraphIri({
       baseRunIri: TABLENOVA_DEFAULTS.baseRunIri,
@@ -232,7 +242,8 @@ async function handleRun() {
       graphIri,
       filename: file.name,
       quads,
-      columnSchemas
+      columnSchemas,
+      sampleValuesByPredicate
     });
 
     await putRun(db, {
@@ -241,7 +252,8 @@ async function handleRun() {
       createdAtIso: new Date().toISOString(),
       quads,
       columnSchemas,
-      ontologyTurtle: outputPackage.views.tbox.turtle
+      ontologyTurtle: outputPackage.views.tbox.turtle,
+      sampleValuesByPredicate
     });
 
     lastOutput = outputPackage;
@@ -303,7 +315,8 @@ async function handleLoadRunToOutput(graphIri) {
       graphIri,
       filename: run.filename,
       quads: run.quads || [],
-      columnSchemas: run.columnSchemas || []
+      columnSchemas: run.columnSchemas || [],
+      sampleValuesByPredicate: run.sampleValuesByPredicate || {}
     });
 
     renderCurrentOutputs();
@@ -373,8 +386,6 @@ function handleExport(kind) {
     return;
   }
 
-  const base = lastOutput.filename.replace(/\.[^.]+$/, '');
-  const graphSlug = lastOutput.graphIri.split('/').slice(-2).join('_').replace(/[^a-zA-Z0-9._-]/g, '_');
   const scope = getOutputScope();
   const view = lastOutput.views?.[scope];
   if (!view) return;
@@ -391,7 +402,7 @@ function handleExport(kind) {
   const pick = map[kind];
   if (!pick) return;
 
-  downloadTextFile(`${base}.${graphSlug}.${pick.ext}`, pick.text);
+  downloadTextFile(`${buildExportBaseName(lastOutput)}.${pick.ext}`, pick.text);
   toasts.show({ title: 'Exported', body: `Downloaded ${pick.ext.toUpperCase()}.` });
 }
 
@@ -426,6 +437,53 @@ function handleExportJsonLdTriples() { handleExport('jsonldTriples'); }
 function handleExportJsonLdGraph() { handleExport('jsonldGraph'); }
 
 /**
+ * @returns {{dataDictionaryCsv: string, jsonSchemaText: string}|null}
+ */
+function buildCurrentDraftMetadata() {
+  if (!lastOutput) {
+    toasts.show({ title: 'Nothing to export', body: 'Run a file or load a saved run first.' });
+    return null;
+  }
+
+  return buildDraftMetadataArtifacts({
+    filename: lastOutput.filename,
+    columnSchemas: lastOutput.columnSchemas || [],
+    quads: lastOutput.quads || [],
+    sampleValuesByPredicate: lastOutput.sampleValuesByPredicate || {}
+  });
+}
+
+/**
+ * @returns {void}
+ */
+function handleExportDataDictionary() {
+  const draftMetadata = buildCurrentDraftMetadata();
+  if (!draftMetadata || !lastOutput) return;
+
+  downloadTextFile(
+    `${buildExportBaseName(lastOutput)}.draft-data-dictionary.csv`,
+    draftMetadata.dataDictionaryCsv,
+    'text/csv;charset=utf-8'
+  );
+  toasts.show({ title: 'Exported', body: 'Downloaded draft data dictionary.' });
+}
+
+/**
+ * @returns {void}
+ */
+function handleExportJsonSchema() {
+  const draftMetadata = buildCurrentDraftMetadata();
+  if (!draftMetadata || !lastOutput) return;
+
+  downloadTextFile(
+    `${buildExportBaseName(lastOutput)}.draft-json-schema.json`,
+    draftMetadata.jsonSchemaText,
+    'application/schema+json;charset=utf-8'
+  );
+  toasts.show({ title: 'Exported', body: 'Downloaded draft JSON schema.' });
+}
+
+/**
  * @returns {'abox'|'tbox'|'both'}
  */
 function getOutputScope() {
@@ -441,10 +499,10 @@ function renderCurrentOutputs() {
 }
 
 /**
- * @param {{dataset: any, graphIri: string, filename: string, quads: any[], columnSchemas: any[]}} params
+ * @param {{dataset: any, graphIri: string, filename: string, quads: any[], columnSchemas: any[], sampleValuesByPredicate?: Record<string, string[]>}} params
  * @returns {Promise<any>}
  */
-async function buildOutputPackage({ dataset, graphIri, filename, quads, columnSchemas }) {
+async function buildOutputPackage({ dataset, graphIri, filename, quads, columnSchemas, sampleValuesByPredicate = {} }) {
   const tboxDataset = buildOntologyDataset(columnSchemas);
   const bothDataset = mergeDatasets(dataset, tboxDataset);
   const tboxQuads = ontologyRecordsFromDataset(tboxDataset);
@@ -467,10 +525,25 @@ async function buildOutputPackage({ dataset, graphIri, filename, quads, columnSc
     graphIri,
     quads,
     columnSchemas,
+    sampleValuesByPredicate,
     ontologyTurtle: tboxSer.turtle,
     views,
     ...aboxSer
   };
+}
+
+/**
+ * @param {{filename: string, graphIri: string}} output
+ * @returns {string}
+ */
+function buildExportBaseName(output) {
+  const base = String(output?.filename || 'table-nova-output').replace(/\.[^.]+$/, '');
+  const graphSlug = String(output?.graphIri || '')
+    .split('/')
+    .slice(-2)
+    .join('_')
+    .replace(/[^a-zA-Z0-9._-]/g, '_');
+  return `${base}.${graphSlug || 'run'}`;
 }
 
 /**
@@ -497,6 +570,23 @@ function mergeDatasets(...datasets) {
  */
 function normalizeTabularForOptions(tabular, options) {
   return applyHeaderRowOptions(tabular, Boolean(options?.treatFirstRowAsHeader ?? true), options?.headerRowNumber || 1);
+}
+
+/**
+ * Builds the row slice used for draft metadata examples.
+ * @param {import('./tabular/parseTabular.js').TabularData} tabular
+ * @param {import('./state/types.js').FileOptions} options
+ * @returns {string[][]}
+ */
+function getProcessedDataRows(tabular, options) {
+  if (Boolean(options?.treatFirstRowAsHeader ?? true)) {
+    return tabular.rows || [];
+  }
+
+  return [
+    ...(Array.isArray(tabular.header) ? [tabular.header] : []),
+    ...(tabular.rows || [])
+  ];
 }
 
 /**
@@ -571,6 +661,8 @@ async function init() {
   dom.exportNQuadsBtn.addEventListener('click', handleExportNQuads);
   dom.exportJsonLdTriplesBtn.addEventListener('click', handleExportJsonLdTriples);
   dom.exportJsonLdGraphBtn.addEventListener('click', handleExportJsonLdGraph);
+  dom.exportDataDictionaryBtn.addEventListener('click', handleExportDataDictionary);
+  dom.exportJsonSchemaBtn.addEventListener('click', handleExportJsonSchema);
   dom.outputScopeInputs.forEach((input) => input.addEventListener('change', renderCurrentOutputs));
 
   toasts.show({ title: 'Ready', body: 'Drop a file to begin.' });

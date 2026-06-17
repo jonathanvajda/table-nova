@@ -15,6 +15,7 @@
  * @property {QuadRecord[]} quads
  * @property {ColumnSchema[]} [columnSchemas]
  * @property {string} [ontologyTurtle]
+ * @property {Record<string, string[]>} [sampleValuesByPredicate]
  */
 
 const DB_NAME = 'table-nova';
