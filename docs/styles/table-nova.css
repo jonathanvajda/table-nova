@@ -11,6 +11,7 @@
   padding: 1rem;
   display: grid;
   gap: var(--ont-gap, 1rem);
+  min-width: 0;
 
   font-family: var(--ont-font-body, system-ui);
   color: var(--ont-text, #111);
@@ -22,6 +23,7 @@
   border-radius: calc(var(--ont-radius, 6px) * 2.333); /* ~14px if radius=6px */
   padding: 1rem;
   background: var(--ont-panel-bg, #fff);
+  min-width: 0;
 }
 
 .table-nova-card__title {
@@ -127,6 +129,30 @@
   font-size: 1.2rem;
 }
 
+.table-nova-fileitem__warning {
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.table-nova-fileitem__warning--warn {
+  color: color-mix(in srgb, #c77700 75%, var(--ont-text, #111));
+}
+
+.table-nova-fileitem__warning--danger {
+  color: color-mix(in srgb, #bf2f2f 78%, var(--ont-text, #111));
+  font-weight: 600;
+}
+
+.table-nova-fileitem--warn {
+  border-color: color-mix(in srgb, #e8a200 55%, var(--ont-border, #d0d7de));
+  background: color-mix(in srgb, #e8a200 9%, var(--ont-panel-bg, #fff));
+}
+
+.table-nova-fileitem--danger {
+  border-color: color-mix(in srgb, #d94b4b 62%, var(--ont-border, #d0d7de));
+  background: color-mix(in srgb, #d94b4b 12%, var(--ont-panel-bg, #fff));
+}
+
 /* Actions */
 .table-nova-actions,
 .table-nova-output-actions {
@@ -196,6 +222,7 @@
 .table-nova-options {
   display: grid;
   gap: 0.75rem;
+  min-width: 0;
 }
 
 .table-nova-field {
@@ -246,6 +273,8 @@
   border-radius: 12px;
   padding: 0.75rem;
   background: var(--ont-panel-bg, #fff);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .table-nova-preview__header {
@@ -264,7 +293,9 @@
 
 .table-nova-preview__body {
   margin-top: 0.75rem;
-  overflow: auto;
+  overflow: visible;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Table */
@@ -274,6 +305,8 @@
   overflow: auto;
   max-height: 420px;
   background: var(--ont-panel-bg, #fff);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .table-nova-tablewrap + .table-nova-tablewrap {
@@ -316,6 +349,10 @@
   width: max-content;
   min-width: 100%;
   table-layout: fixed;
+}
+
+.table-nova-tablewrap--preview-schema {
+  inline-size: 100%;
 }
 
 .table-nova-table--preview-schema th:first-child {
@@ -542,6 +579,15 @@
 
 /* Output controls use px so Skeleton's 10px root rem scale cannot skew them. */
 .table-nova-main .table-nova-tabs .table-nova-tab {
+  box-sizing: border-box;
+  font-size: 13px;
+  line-height: 1.2;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+}
+
+.table-nova-main .table-nova-output-metaexport .table-nova-btn {
   box-sizing: border-box;
   font-size: 13px;
   line-height: 1.2;

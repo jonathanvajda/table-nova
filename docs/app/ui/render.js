@@ -13,6 +13,8 @@ const XSD = 'http://www.w3.org/2001/XMLSchema#';
 const MIN_PREVIEW_COL_CH = 10;
 const MAX_PREVIEW_COL_CH = 38;
 const ROW_HEADER_COL_CH = 10;
+const FILE_WARN_MB = 5;
+const FILE_DANGER_MB = 10;
 
 /**
  * Enables or disables the Run button.
@@ -58,8 +60,9 @@ export function renderStagedFiles(listEl, stagedFiles, onRemove) {
  * @returns {HTMLLIElement}
  */
 export function buildStagedFileItem(staged) {
+  const warning = getStagedFileWarning(staged.file?.size || 0);
   const li = document.createElement('li');
-  li.className = 'table-nova-fileitem';
+  li.className = warning ? `table-nova-fileitem ${warning.itemClass}` : 'table-nova-fileitem';
 
   const meta = document.createElement('div');
   meta.className = 'table-nova-fileitem__meta';
@@ -75,6 +78,13 @@ export function buildStagedFileItem(staged) {
   meta.appendChild(name);
   meta.appendChild(sub);
 
+  if (warning) {
+    const note = document.createElement('div');
+    note.className = `table-nova-fileitem__warning ${warning.noteClass}`;
+    note.textContent = warning.message;
+    meta.appendChild(note);
+  }
+
   const btn = document.createElement('button');
   btn.className = 'table-nova-btn table-nova-btn--icon';
   btn.type = 'button';
@@ -85,6 +95,34 @@ export function buildStagedFileItem(staged) {
   li.appendChild(meta);
   li.appendChild(btn);
   return li;
+}
+
+/**
+ * @param {number} bytes
+ * @returns {{message: string, itemClass: string, noteClass: string}|null}
+ */
+export function getStagedFileWarning(bytes) {
+  const size = Number(bytes || 0);
+  const warnThreshold = FILE_WARN_MB * 1024 * 1024;
+  const dangerThreshold = FILE_DANGER_MB * 1024 * 1024;
+
+  if (size > dangerThreshold) {
+    return {
+      message: 'Large file warning: files over 10 MB are likely to make this page crash. Select a smaller file if possible.',
+      itemClass: 'table-nova-fileitem--danger',
+      noteClass: 'table-nova-fileitem__warning--danger'
+    };
+  }
+
+  if (size > warnThreshold) {
+    return {
+      message: 'Large file warning: files over 5 MB may take extra time to load and process.',
+      itemClass: 'table-nova-fileitem--warn',
+      noteClass: 'table-nova-fileitem__warning--warn'
+    };
+  }
+
+  return null;
 }
 
 /**
