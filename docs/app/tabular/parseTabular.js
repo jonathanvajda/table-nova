@@ -3,6 +3,10 @@
  */
 
 import { getSupportedMimeTypeForFilename } from '../shared/format-registry/mime-registry.js';
+import {
+  detectDelimitedTextDelimiter,
+  parseDelimitedText
+} from '../shared/tabular-io/index.js';
 
 /**
  * @typedef {'csv'|'tsv'|'xlsx'|'unknown'} TabularKind
@@ -46,9 +50,7 @@ export function detectTabularType(filename) {
  * @returns {','|'\t'}
  */
 export function detectDelimiterFromLine(line) {
-  const comma = (line.match(/,/g) || []).length;
-  const tab = (line.match(/\t/g) || []).length;
-  return tab > comma ? '\t' : ',';
+  return detectDelimitedTextDelimiter(line, { candidates: [',', '\t'] });
 }
 
 /**
@@ -60,21 +62,16 @@ export function detectDelimiterFromLine(line) {
  */
 export function parseCsvOrTsvText(text, delimiterHint = null) {
   const src = String(text ?? '');
-  const lines = src.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-  const firstNonEmpty = lines.find((l) => l.trim().length > 0) ?? '';
-  const delim = delimiterHint ?? detectDelimiterFromLine(firstNonEmpty);
+  const parsed = parseDelimitedText(src, {
+    delimiter: delimiterHint || undefined,
+    hasHeader: true,
+    trimHeaders: true,
+    trimCells: true,
+    skipBlankRows: true
+  });
 
-  /** @type {string[][]} */
-  const all = [];
-  for (const line of lines) {
-    if (line.length === 0) continue;
-    all.push(parseLine(line, delim));
-  }
-
-  if (all.length === 0) return { header: null, rows: [] };
-  const header = normalizeRow(all[0]);
-  const rows = all.slice(1).map(normalizeRow);
-  return { header, rows };
+  if (parsed.headers.length === 0) return { header: null, rows: [] };
+  return { header: parsed.headers, rows: parsed.rows };
 }
 
 /**
@@ -84,40 +81,12 @@ export function parseCsvOrTsvText(text, delimiterHint = null) {
  * @returns {string[]}
  */
 export function parseLine(line, delim) {
-  /** @type {string[]} */
-  const out = [];
-  let cur = '';
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i += 1) {
-    const ch = line[i];
-
-    if (inQuotes) {
-      if (ch === '"') {
-        const next = line[i + 1];
-        if (next === '"') {
-          cur += '"';
-          i += 1;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        cur += ch;
-      }
-    } else {
-      if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === delim) {
-        out.push(cur);
-        cur = '';
-      } else {
-        cur += ch;
-      }
-    }
-  }
-
-  out.push(cur);
-  return out;
+  return parseDelimitedText(line, {
+    delimiter: delim,
+    hasHeader: false,
+    trimCells: false,
+    skipBlankRows: false
+  }).rows[0] || [];
 }
 
 /**

@@ -2,6 +2,8 @@
  * @file Draft metadata artifact builders for data dictionaries and JSON Schema.
  */
 
+import { serializeDelimitedRecords } from './shared/tabular-io/index.js';
+
 /**
  * @typedef {import('./rdf/schema.js').ColumnSchema} ColumnSchema
  * @typedef {import('./rdf/buildDataset.js').QuadRecord} QuadRecord
@@ -119,12 +121,11 @@ export function serializeDataDictionaryCsv(rows) {
     'example'
   ];
 
-  const lines = [
-    headers.map(escapeCsvCell).join(','),
-    ...(rows || []).map((row) => headers.map((key) => escapeCsvCell(row?.[key] || '')).join(','))
-  ];
-
-  return `${lines.join('\n')}\n`;
+  return serializeDelimitedRecords(rows || [], {
+    headers,
+    delimiter: ',',
+    trailingNewline: true
+  });
 }
 
 /**
@@ -198,15 +199,6 @@ export function collectExampleValuesFromQuads(quads, columnSchemas) {
  */
 function hasSampleValues(sampleValuesByPredicate) {
   return Object.values(sampleValuesByPredicate || {}).some((values) => Array.isArray(values) && values.length > 0);
-}
-
-/**
- * @param {string} value
- * @returns {string}
- */
-function escapeCsvCell(value) {
-  const s = String(value ?? '');
-  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 /**
