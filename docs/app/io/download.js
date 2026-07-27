@@ -2,7 +2,7 @@
  * @file Browser download helpers.
  */
 
-import { downloadTextFile as downloadBrowserTextFile } from '../shared/format-registry/browser-file-actions.js';
+import { downloadTextFile as downloadBrowserTextFile } from '../shared/browser-file-io/index.js';
 
 /**
  * Downloads text content as a file.

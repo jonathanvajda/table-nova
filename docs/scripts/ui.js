@@ -1,7 +1,7 @@
 // docs/scripts/ui.js
 
 import { escapeHtml } from './utils.js';
-import { downloadTextFile } from '../app/shared/format-registry/browser-file-actions.js';
+import { downloadTextFile } from '../app/shared/browser-file-io/index.js';
 
 /**
  * DOM helpers and rendering.

@@ -157,6 +157,7 @@ async function handlePreviewFile(stagedId) {
     const { file, options } = staged;
     const kind = detectTabularType(file.name);
 
+    // Browser file I/O stops here; CSV/TSV/XLSX parser contracts are a separate capability.
     const tabular = await (kind === 'xlsx'
       ? parseXlsxArrayBuffer(await readFileAsArrayBuffer(file))
       : parseCsvOrTsvText(await readFileAsText(file), options.delimiterHint));
@@ -200,6 +201,7 @@ async function handleRun() {
     const { file, options } = staged;
     const kind = detectTabularType(file.name);
 
+    // Browser file I/O stops here; CSV/TSV/XLSX parser contracts are a separate capability.
     const tabular = await (kind === 'xlsx'
       ? parseXlsxArrayBuffer(await readFileAsArrayBuffer(file))
       : parseCsvOrTsvText(await readFileAsText(file), options.delimiterHint));
