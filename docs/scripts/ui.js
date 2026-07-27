@@ -1,6 +1,7 @@
 // docs/scripts/ui.js
 
 import { escapeHtml } from './utils.js';
+import { downloadTextFile } from '../app/shared/format-registry/browser-file-actions.js';
 
 /**
  * DOM helpers and rendering.
@@ -100,15 +101,5 @@ export function renderPartsTable(target, parts) {
  * @param {string} mimeType
  */
 export function downloadText(filename, content, mimeType) {
-  var blob = new Blob([content], { type: mimeType });
-  var url = URL.createObjectURL(blob);
-
-  var link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-
-  URL.revokeObjectURL(url);
+  downloadTextFile(filename, content, { mimeType });
 }

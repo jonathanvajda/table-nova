@@ -1,17 +1,16 @@
 /**
  * @file Generate a thin ontology artifact from Table Nova column schemas.
  */
+import { namespacePrefixMapFromRegistry } from '../shared/namespace-registry/namespace-registry.js';
+import { compactIriToCurie, findLongestPrefixMatch } from '../shared/namespace-registry/curie.js';
 
 /**
  * @typedef {import('./schema.js').ColumnSchema} ColumnSchema
  */
 
 const DEFAULT_PREFIXES = {
+  ...namespacePrefixMapFromRegistry(),
   tablenova: 'https://example.org/TableNova/',
-  xsd: 'http://www.w3.org/2001/XMLSchema#',
-  owl: 'http://www.w3.org/2002/07/owl#',
-  rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
-  dcterms: 'http://purl.org/dc/terms/'
 };
 
 /**
@@ -119,10 +118,13 @@ export function buildPropertyBlock(schema, prefixes) {
  */
 export function compactIri(iri, prefixes = DEFAULT_PREFIXES) {
   const value = String(iri ?? '');
-  for (const [prefix, base] of Object.entries(prefixes || {})) {
-    if (!base || !value.startsWith(base)) continue;
-    const local = value.slice(String(base).length);
-    if (/^[A-Za-z_][A-Za-z0-9_-]*$/.test(local)) return `${prefix}:${local}`;
+  const compacted = compactIriToCurie(value, prefixes);
+  if (compacted.ok) return compacted.value;
+
+  const match = findLongestPrefixMatch(value, prefixes);
+  if (match.ok) {
+    const local = value.slice(String(match.namespaceIri).length);
+    if (/^[A-Za-z_][A-Za-z0-9_-]*$/.test(local)) return `${match.prefix}:${local}`;
   }
   return `<${value.replace(/>/g, '%3E')}>`;
 }

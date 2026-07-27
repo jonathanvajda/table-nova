@@ -1,6 +1,7 @@
 /**
  * @file Serialize RDFJS datasets into Turtle/TriG/N-Triples/N-Quads/JSON-LD.
  */
+import { createN3WriterOptionsWithPrefixes } from '../shared/namespace-registry/rdf-serialization-prefixes.js';
 
 /**
  * Resolve required globals once at module load.
@@ -74,7 +75,11 @@ export async function datasetToSerializations({ dataset, graphIri, prefixes }) {
 export function writeWithN3(store, options) {
   return new Promise((resolve, reject) => {
     try {
-      const writer = new N3.Writer({ format: options.format, prefixes: options.prefixes });
+      const writerOptions = createN3WriterOptionsWithPrefixes({
+        format: options.format,
+        prefixes: options.prefixes || {}
+      });
+      const writer = new N3.Writer(writerOptions.value);
       writer.addQuads(store.getQuads(null, null, null, null));
       writer.end((err, result) => (err ? reject(err) : resolve(String(result || ''))));
     } catch (err) {

@@ -2,6 +2,8 @@
  * @file Parse CSV/TSV text and XLSX ArrayBuffers into a common tabular shape.
  */
 
+import { getSupportedMimeTypeForFilename } from '../shared/format-registry/mime-registry.js';
+
 /**
  * @typedef {'csv'|'tsv'|'xlsx'|'unknown'} TabularKind
  */
@@ -18,6 +20,18 @@
  * @returns {TabularKind}
  */
 export function detectTabularType(filename) {
+  const detected = getSupportedMimeTypeForFilename(filename);
+  if (detected?.ok && detected.value.category === 'tabular') {
+    if (detected.value.mimeType === 'text/csv') return 'csv';
+    if (detected.value.mimeType === 'text/tab-separated-values') return 'tsv';
+    if (
+      detected.value.mimeType === 'application/vnd.ms-excel' ||
+      detected.value.mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ) {
+      return 'xlsx';
+    }
+  }
+
   const lower = String(filename || '').toLowerCase();
   if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) return 'xlsx';
   if (lower.endsWith('.tsv')) return 'tsv';
