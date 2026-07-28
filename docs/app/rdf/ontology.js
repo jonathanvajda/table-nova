@@ -43,7 +43,7 @@ export function buildOntologyTurtle(columnSchemas, prefixes = DEFAULT_PREFIXES) 
 export function buildOntologyDataset(columnSchemas) {
   const N3 = /** @type {any} */ (globalThis).N3;
   if (!N3) {
-    throw new Error('Global N3 not found. Ensure ./app/imports/n3.min.js is loaded before Table Nova modules.');
+    throw new Error('Global N3 not found. Ensure ./app/shared/vendor/n3.min.js is loaded before Table Nova modules.');
   }
 
   const { DataFactory, Store } = N3;

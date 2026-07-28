@@ -492,7 +492,7 @@ async function getN3() {
   if (_n3Mod) return _n3Mod;
   _n3Mod = /** @type {any} */ (globalThis).N3;
   if (!_n3Mod) {
-    throw new Error('Global N3 not found. Ensure ./app/imports/n3.min.js is loaded before Table Nova modules.');
+    throw new Error('Global N3 not found. Ensure ./app/shared/vendor/n3.min.js is loaded before Table Nova modules.');
   }
   return _n3Mod;
 }
