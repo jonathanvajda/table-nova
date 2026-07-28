@@ -2,6 +2,10 @@
  * @file Serialize RDFJS datasets into Turtle/TriG/N-Triples/N-Quads/JSON-LD.
  */
 import { createN3WriterOptionsWithPrefixes } from '../shared/namespace-registry/rdf-serialization-prefixes.js';
+import {
+  parseRdfTextWithAdapters,
+  serializeRdfDatasetWithAdapters
+} from '../shared/rdf-io/index.js';
 
 /**
  * Resolve required globals once at module load.
@@ -73,19 +77,15 @@ export async function datasetToSerializations({ dataset, graphIri, prefixes }) {
  * @returns {Promise<string>}
  */
 export function writeWithN3(store, options) {
-  return new Promise((resolve, reject) => {
-    try {
-      const writerOptions = createN3WriterOptionsWithPrefixes({
-        format: options.format,
-        prefixes: options.prefixes || {}
-      });
-      const writer = new N3.Writer(writerOptions.value);
-      writer.addQuads(store.getQuads(null, null, null, null));
-      writer.end((err, result) => (err ? reject(err) : resolve(String(result || ''))));
-    } catch (err) {
-      reject(err);
-    }
+  const writerOptions = createN3WriterOptionsWithPrefixes({
+    format: options.format,
+    prefixes: options.prefixes || {}
   });
+  return serializeRdfDatasetWithAdapters(store, {
+    format: writerOptions.value.format || options.format,
+    prefixes: writerOptions.value.prefixes || {},
+    runtime: { N3, jsonld: JSONLD }
+  }).then((result) => result.text);
 }
 
 /**
@@ -97,11 +97,14 @@ export function writeWithN3(store, options) {
  */
 export async function rdfToJsonLd(nquadsOrNtriples, isDataset, graphIri) {
   // jsonld.fromRDF expects N-Quads. For N-Triples, it still works (subset).
-  const doc = await JSONLD.fromRDF(String(nquadsOrNtriples || ''), { format: 'application/n-quads' });
-
-  if (!isDataset) {
-    return JSON.stringify(doc, null, 2);
-  }
-
-  return JSON.stringify(doc, null, 2);
+  const parsed = await parseRdfTextWithAdapters(String(nquadsOrNtriples || ''), {
+    format: isDataset ? 'nquads' : 'ntriples',
+    runtime: { N3, jsonld: JSONLD }
+  });
+  const serialized = await serializeRdfDatasetWithAdapters(parsed.dataset, {
+    format: 'jsonld',
+    runtime: { N3, jsonld: JSONLD },
+    ...(graphIri ? { baseIri: graphIri } : {})
+  });
+  return serialized.text;
 }
