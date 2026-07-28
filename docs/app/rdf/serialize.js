@@ -1,7 +1,6 @@
 /**
  * @file Serialize RDFJS datasets into Turtle/TriG/N-Triples/N-Quads/JSON-LD.
  */
-import { createN3WriterOptionsWithPrefixes } from '../shared/namespace-registry/rdf-serialization-prefixes.js';
 import {
   parseRdfTextWithAdapters,
   serializeRdfDatasetWithAdapters
@@ -58,33 +57,44 @@ export async function datasetToSerializations({ dataset, graphIri, prefixes }) {
     triplesStore.addQuad(DataFactory.quad(q.subject, q.predicate, q.object));
   }
 
-  const turtle = await writeWithN3(triplesStore, { format: 'Turtle', prefixes });
-  const ntriples = await writeWithN3(triplesStore, { format: 'N-Triples' });
+  const turtle = await serializeRdfDatasetText(triplesStore, { format: 'Turtle', prefixes });
+  const ntriples = await serializeRdfDatasetText(triplesStore, { format: 'N-Triples' });
 
-  const trig = await writeWithN3(dataset, { format: 'application/trig', prefixes });
-  const nquads = await writeWithN3(dataset, { format: 'N-Quads' });
+  const trig = await serializeRdfDatasetText(dataset, { format: 'application/trig', prefixes });
+  const nquads = await serializeRdfDatasetText(dataset, { format: 'N-Quads' });
 
-  const jsonldTriples = await rdfToJsonLd(ntriples, false);
-  const jsonldGraph = await rdfToJsonLd(nquads, true, graphIri);
+  const jsonldTriples = await serializeRdfDatasetToJsonLdText(triplesStore);
+  const jsonldGraph = await serializeRdfDatasetToJsonLdText(dataset, graphIri);
 
   return { turtle, trig, ntriples, nquads, jsonldTriples, jsonldGraph };
 }
 
 /**
- * Writes a dataset/store via N3.Writer.
+ * Serializes an RDF/JS dataset/store with the promoted RDF adapter layer.
  * @param {any} store
  * @param {{format: string, prefixes?: Record<string, string>}} options
  * @returns {Promise<string>}
  */
-export function writeWithN3(store, options) {
-  const writerOptions = createN3WriterOptionsWithPrefixes({
-    format: options.format,
-    prefixes: options.prefixes || {}
-  });
+export function serializeRdfDatasetText(store, options) {
   return serializeRdfDatasetWithAdapters(store, {
-    format: writerOptions.value.format || options.format,
-    prefixes: writerOptions.value.prefixes || {},
+    format: options.format,
+    prefixes: options.prefixes || {},
     runtime: { N3, jsonld: JSONLD }
+  }).then((result) => result.text);
+}
+
+/**
+ * Serializes an RDF/JS dataset/store to JSON-LD without reparsing an
+ * intermediate N-Triples/N-Quads string.
+ * @param {any} store
+ * @param {string} [graphIri]
+ * @returns {Promise<string>}
+ */
+export function serializeRdfDatasetToJsonLdText(store, graphIri) {
+  return serializeRdfDatasetWithAdapters(store, {
+    format: 'jsonld',
+    runtime: { N3, jsonld: JSONLD },
+    ...(graphIri ? { baseIri: graphIri } : {})
   }).then((result) => result.text);
 }
 

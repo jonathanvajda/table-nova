@@ -1,7 +1,10 @@
 /**
  * @file Generate a thin ontology artifact from Table Nova column schemas.
  */
-import { namespacePrefixMapFromRegistry } from '../shared/namespace-registry/namespace-registry.js';
+import {
+  COMMON_NAMESPACE_IRIS,
+  namespacePrefixMapFromRegistry
+} from '../shared/namespace-registry/namespace-registry.js';
 import { compactIriToCurie, findLongestPrefixMatch } from '../shared/namespace-registry/curie.js';
 
 /**
@@ -12,6 +15,7 @@ const DEFAULT_PREFIXES = {
   ...namespacePrefixMapFromRegistry(),
   tablenova: 'https://example.org/TableNova/',
 };
+const NS = COMMON_NAMESPACE_IRIS;
 
 /**
  * Builds ontology Turtle that annotates generated column predicates.
@@ -44,12 +48,12 @@ export function buildOntologyDataset(columnSchemas) {
 
   const { DataFactory, Store } = N3;
   const store = new Store();
-  const rdfType = DataFactory.namedNode('http://www.w3.org/1999/02/22-rdf-syntax-ns#type');
-  const datatypeProperty = DataFactory.namedNode(DEFAULT_PREFIXES.owl + 'DatatypeProperty');
-  const rdfsLabel = DataFactory.namedNode(DEFAULT_PREFIXES.rdfs + 'label');
-  const rdfsRange = DataFactory.namedNode(DEFAULT_PREFIXES.rdfs + 'range');
-  const rdfsComment = DataFactory.namedNode(DEFAULT_PREFIXES.rdfs + 'comment');
-  const dctermsIdentifier = DataFactory.namedNode(DEFAULT_PREFIXES.dcterms + 'identifier');
+  const rdfType = DataFactory.namedNode(NS.rdf.type);
+  const datatypeProperty = DataFactory.namedNode(NS.owl.DatatypeProperty);
+  const rdfsLabel = DataFactory.namedNode(NS.rdfs.label);
+  const rdfsRange = DataFactory.namedNode(NS.rdfs.range);
+  const rdfsComment = DataFactory.namedNode(NS.rdfs.comment);
+  const dctermsIdentifier = DataFactory.namedNode(NS.dcterms.identifier);
 
   for (const schema of columnSchemas || []) {
     const subject = DataFactory.namedNode(schema.predicateIri);

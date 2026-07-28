@@ -3,13 +3,14 @@
  */
 
 import { serializeDelimitedRecords } from './shared/tabular-io/index.js';
+import { namespacePrefixMapFromRegistry } from './shared/namespace-registry/namespace-registry.js';
 
 /**
  * @typedef {import('./rdf/schema.js').ColumnSchema} ColumnSchema
  * @typedef {import('./rdf/buildDataset.js').QuadRecord} QuadRecord
  */
 
-const XSD_NS = 'http://www.w3.org/2001/XMLSchema#';
+const XSD_NS = namespacePrefixMapFromRegistry().xsd;
 const JSON_SCHEMA_DRAFT_2020_12 = 'https://json-schema.org/draft/2020-12/schema';
 const SAMPLE_LIMIT = 5;
 const UNIQUE_EXAMPLE_LIMIT = 2;

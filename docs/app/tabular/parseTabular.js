@@ -64,14 +64,14 @@ export function parseCsvOrTsvText(text, delimiterHint = null) {
   const src = String(text ?? '');
   const parsed = parseDelimitedText(src, {
     delimiter: delimiterHint || undefined,
-    hasHeader: true,
-    trimHeaders: true,
+    hasHeader: false,
     trimCells: true,
-    skipBlankRows: true
+    skipEmptyLines: true
   });
 
-  if (parsed.headers.length === 0) return { header: null, rows: [] };
-  return { header: parsed.headers, rows: parsed.rows };
+  const rows = parsed.rows || [];
+  if (rows.length === 0) return { header: null, rows: [] };
+  return { header: rows[0], rows: rows.slice(1) };
 }
 
 /**

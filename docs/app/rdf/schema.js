@@ -2,12 +2,14 @@
  * @file Table Nova RDF schema helpers (IRI + predicate building, literals).
  */
 
+import { COMMON_NAMESPACE_IRIS } from '../shared/namespace-registry/namespace-registry.js';
+
 /**
  * @typedef {import('../state/types.js').PredicateOptions} PredicateOptions
  * @typedef {import('../state/types.js').HeaderStyle} HeaderStyle
  */
 
-const XSD_STRING = 'http://www.w3.org/2001/XMLSchema#string';
+const XSD_STRING = COMMON_NAMESPACE_IRIS.xsd.string;
 const SIMPLE_ACRONYMS = new Set(['ID', 'IRI', 'URI', 'URL', 'UUID', 'API', 'CSV', 'TSV', 'JSON', 'XML', 'HTML', 'RDF', 'RDFS', 'OWL']);
 
 /**
@@ -409,7 +411,7 @@ export async function buildLiteralObject(value, datatypeIri) {
   const N3 = await getN3();
   const { DataFactory } = N3;
   const v = String(value ?? '').trim();
-  const dt = String(datatypeIri ?? 'http://www.w3.org/2001/XMLSchema#string');
+  const dt = String(datatypeIri ?? XSD_STRING);
 
   if (dt.endsWith('#boolean')) {
     return DataFactory.literal(toBooleanLexical(v), DataFactory.namedNode(dt));

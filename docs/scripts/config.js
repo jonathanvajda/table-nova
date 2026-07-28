@@ -4,13 +4,17 @@
  * Centralized configuration and IRI constants.
  */
 
+import { namespacePrefixMapFromRegistry } from '../app/shared/namespace-registry/namespace-registry.js';
+
+const STANDARD_PREFIXES = namespacePrefixMapFromRegistry();
+
 export const NS = {
-  rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
-  rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
-  owl: 'http://www.w3.org/2002/07/owl#',
-  dcterms: 'http://purl.org/dc/terms/',
-  cco: 'https://www.commoncoreontologies.org/',
-  bfo: 'http://purl.obolibrary.org/obo/',
+  rdf: STANDARD_PREFIXES.rdf,
+  rdfs: STANDARD_PREFIXES.rdfs,
+  owl: STANDARD_PREFIXES.owl,
+  dcterms: STANDARD_PREFIXES.dcterms,
+  cco: STANDARD_PREFIXES.cco2,
+  bfo: STANDARD_PREFIXES.obo,
   ex: 'https://example.org/doc-inst/'
 };
 

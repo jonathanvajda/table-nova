@@ -10,8 +10,9 @@ import {
 } from './ui/telemetry.js';
 import {
   readFileAsArrayBuffer,
+  downloadTextFile,
   readFileAsText
-} from './io/fileReaders.js';
+} from './shared/browser-file-io/index.js';
 import {
   applyHeaderRowOptions,
   detectTabularType,
@@ -30,7 +31,7 @@ import {
 } from './rdf/ontology.js';
 import {
   rdfToJsonLd,
-  writeWithN3
+  serializeRdfDatasetText
 } from './rdf/serialize.js';
 import {
   buildDraftMetadataArtifacts,
@@ -43,9 +44,6 @@ import {
   deleteRun,
   getRunDataset
 } from './storage/indexedDb.js';
-import {
-  downloadTextFile
-} from './io/download.js';
 import {
   renderStagedFiles,
   renderFileOptionsPanel,
@@ -472,7 +470,7 @@ function handleExportDataDictionary() {
   downloadTextFile(
     `${buildExportBaseName(lastOutput)}.draft-data-dictionary.csv`,
     draftMetadata.dataDictionaryCsv,
-    'text/csv;charset=utf-8'
+    { mimeType: 'text/csv;charset=utf-8' }
   );
   toasts.show({ title: 'Exported', body: 'Downloaded draft data dictionary.' });
 }
@@ -487,7 +485,7 @@ function handleExportJsonSchema() {
   downloadTextFile(
     `${buildExportBaseName(lastOutput)}.draft-json-schema.json`,
     draftMetadata.jsonSchemaText,
-    'application/schema+json;charset=utf-8'
+    { mimeType: 'application/schema+json;charset=utf-8' }
   );
   toasts.show({ title: 'Exported', body: 'Downloaded draft JSON schema.' });
 }
@@ -698,27 +696,27 @@ async function serializeScopeKind(dataset, graphIri, prefixes, kind) {
   if (!dataset) return '';
 
   if (kind === 'turtle') {
-    return writeWithN3(toTriplesStore(dataset), { format: 'Turtle', prefixes });
+    return serializeRdfDatasetText(toTriplesStore(dataset), { format: 'Turtle', prefixes });
   }
 
   if (kind === 'trig') {
-    return writeWithN3(dataset, { format: 'application/trig', prefixes });
+    return serializeRdfDatasetText(dataset, { format: 'application/trig', prefixes });
   }
 
   if (kind === 'ntriples') {
-    return writeWithN3(toTriplesStore(dataset), { format: 'N-Triples' });
+    return serializeRdfDatasetText(toTriplesStore(dataset), { format: 'N-Triples' });
   }
 
   if (kind === 'nquads') {
-    return writeWithN3(dataset, { format: 'N-Quads' });
+    return serializeRdfDatasetText(dataset, { format: 'N-Quads' });
   }
 
   if (kind === 'jsonldTriples') {
-    const ntriples = await writeWithN3(toTriplesStore(dataset), { format: 'N-Triples' });
+    const ntriples = await serializeRdfDatasetText(toTriplesStore(dataset), { format: 'N-Triples' });
     return rdfToJsonLd(ntriples, false);
   }
 
-  const nquads = await writeWithN3(dataset, { format: 'N-Quads' });
+  const nquads = await serializeRdfDatasetText(dataset, { format: 'N-Quads' });
   return rdfToJsonLd(nquads, true, graphIri);
 }
 

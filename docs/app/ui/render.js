@@ -3,13 +3,14 @@
  */
 
 import { buildColumnSchemas } from '../rdf/schema.js';
+import { namespacePrefixMapFromRegistry } from '../shared/namespace-registry/namespace-registry.js';
 
 /**
  * @typedef {import('../state/types.js').StagedFile} StagedFile
  * @typedef {import('../state/types.js').FileOptions} FileOptions
  */
 
-const XSD = 'http://www.w3.org/2001/XMLSchema#';
+const XSD = namespacePrefixMapFromRegistry().xsd;
 const MIN_PREVIEW_COL_CH = 10;
 const MAX_PREVIEW_COL_CH = 38;
 const ROW_HEADER_COL_CH = 10;
