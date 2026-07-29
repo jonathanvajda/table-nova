@@ -3,14 +3,15 @@
  */
 
 import { buildColumnSchemas } from '../rdf/schema.js';
-import { namespacePrefixMapFromRegistry } from '../shared/namespace-registry/namespace-registry.js';
+import { COMMON_NAMESPACE_IRIS, namespacePrefixMapFromRegistry } from '../shared/namespace-registry/namespace-registry.js';
 
 /**
  * @typedef {import('../state/types.js').StagedFile} StagedFile
  * @typedef {import('../state/types.js').FileOptions} FileOptions
  */
 
-const XSD = namespacePrefixMapFromRegistry().xsd;
+const NS = COMMON_NAMESPACE_IRIS;
+const XSD_NS = namespacePrefixMapFromRegistry().xsd;
 const MIN_PREVIEW_COL_CH = 10;
 const MAX_PREVIEW_COL_CH = 38;
 const ROW_HEADER_COL_CH = 10;
@@ -662,7 +663,7 @@ export function estimatePreviewColumnWidths(colKeys, rows, schemas) {
       textWidthCh(schema?.detectedStyle || ''),
       textWidthCh(schema?.label || ''),
       textWidthCh(schema?.predicateLocalName || ''),
-      textWidthCh(shortDatatypeLabel(schema?.datatypeIri || `${XSD}string`))
+      textWidthCh(shortDatatypeLabel(schema?.datatypeIri || NS.xsd.string))
     );
     const desired = Math.max(headerCh, sampleCh, schemaCh);
     return Math.min(MAX_PREVIEW_COL_CH, Math.max(MIN_PREVIEW_COL_CH, Math.min(desired, maxFromHeader)));
@@ -684,7 +685,7 @@ export function textWidthCh(value) {
  */
 export function shortDatatypeLabel(datatypeIri) {
   const s = String(datatypeIri || '');
-  if (s.startsWith(XSD)) return `xsd:${s.slice(XSD.length)}`;
+  if (s.startsWith(XSD_NS)) return `xsd:${s.slice(XSD_NS.length)}`;
   return s;
 }
 
@@ -696,15 +697,15 @@ export function shortDatatypeLabel(datatypeIri) {
 export function buildDatatypeSelect(selected) {
   const sel = document.createElement('select');
   sel.className = 'table-nova-select';
-  sel.appendChild(optionOf(`${XSD}string`, 'xsd:string'));
-  sel.appendChild(optionOf(`${XSD}boolean`, 'xsd:boolean'));
-  sel.appendChild(optionOf(`${XSD}integer`, 'xsd:integer'));
-  sel.appendChild(optionOf(`${XSD}decimal`, 'xsd:decimal'));
-  sel.appendChild(optionOf(`${XSD}double`, 'xsd:double'));
-  sel.appendChild(optionOf(`${XSD}dateTime`, 'xsd:dateTime'));
-  sel.appendChild(optionOf(`${XSD}date`, 'xsd:date'));
-  sel.appendChild(optionOf(`${XSD}anyURI`, 'xsd:anyURI'));
-  sel.value = selected || `${XSD}string`;
+  sel.appendChild(optionOf(NS.xsd.string, 'xsd:string'));
+  sel.appendChild(optionOf(NS.xsd.boolean, 'xsd:boolean'));
+  sel.appendChild(optionOf(NS.xsd.integer, 'xsd:integer'));
+  sel.appendChild(optionOf(NS.xsd.decimal, 'xsd:decimal'));
+  sel.appendChild(optionOf(NS.xsd.double, 'xsd:double'));
+  sel.appendChild(optionOf(NS.xsd.dateTime, 'xsd:dateTime'));
+  sel.appendChild(optionOf(NS.xsd.date, 'xsd:date'));
+  sel.appendChild(optionOf(NS.xsd.anyURI, 'xsd:anyURI'));
+  sel.value = selected || NS.xsd.string;
   return sel;
 }
 
