@@ -3,10 +3,6 @@
  */
 
 import { getSupportedMimeTypeForFilename } from '../shared/format-registry/mime-registry.js';
-import {
-  detectDelimitedTextDelimiter,
-  parseDelimitedText
-} from '../shared/tabular-io/index.js';
 
 /**
  * @typedef {'csv'|'tsv'|'xlsx'|'unknown'} TabularKind
@@ -42,84 +38,6 @@ export function detectTabularType(filename) {
   if (lower.endsWith('.csv')) return 'csv';
   if (lower.endsWith('.txt')) return 'csv';
   return 'unknown';
-}
-
-/**
- * Heuristically detects delimiter from a single line.
- * @param {string} line
- * @returns {','|'\t'}
- */
-export function detectDelimiterFromLine(line) {
-  return detectDelimitedTextDelimiter(line, { candidates: [',', '\t'] });
-}
-
-/**
- * Splits CSV/TSV into rows of cells.
- * Minimal RFC4180-ish parsing: supports quotes and escaped quotes.
- * @param {string} text
- * @param {','|'\t'|null} delimiterHint
- * @returns {TabularData}
- */
-export function parseCsvOrTsvText(text, delimiterHint = null) {
-  const src = String(text ?? '');
-  const parsed = parseDelimitedText(src, {
-    delimiter: delimiterHint || undefined,
-    hasHeader: false,
-    trimCells: true,
-    skipEmptyLines: true
-  });
-
-  const rows = parsed.rows || [];
-  if (rows.length === 0) return { header: null, rows: [] };
-  return { header: rows[0], rows: rows.slice(1) };
-}
-
-/**
- * Parses a single CSV/TSV line.
- * @param {string} line
- * @param {','|'\t'} delim
- * @returns {string[]}
- */
-export function parseLine(line, delim) {
-  return parseDelimitedText(line, {
-    delimiter: delim,
-    hasHeader: false,
-    trimCells: false,
-    skipBlankRows: false
-  }).rows[0] || [];
-}
-
-/**
- * Normalizes a row to trimmed strings (keeps empty cells).
- * @param {string[]} row
- * @returns {string[]}
- */
-export function normalizeRow(row) {
-  return (row || []).map((c) => String(c ?? '').trim());
-}
-
-/**
- * Applies header row options after parsing.
- * @param {TabularData} tabular
- * @param {boolean} treatFirstRowAsHeader
- * @param {number} headerRowNumber 1-based row number
- * @returns {TabularData}
- */
-export function applyHeaderRowOptions(tabular, treatFirstRowAsHeader, headerRowNumber = 1) {
-  if (!treatFirstRowAsHeader) return tabular;
-
-  const allRows = [
-    ...(Array.isArray(tabular.header) ? [tabular.header] : []),
-    ...(tabular.rows || [])
-  ];
-  if (allRows.length === 0) return { header: null, rows: [] };
-
-  const requested = Math.max(1, Math.floor(Number(headerRowNumber || 1)));
-  const headerIndex = Math.min(allRows.length - 1, requested - 1);
-  return {
-    header: allRows[headerIndex],
-    rows: allRows.slice(headerIndex + 1)
-  };
 }
 
 /**

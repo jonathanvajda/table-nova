@@ -15,8 +15,10 @@ import {
 } from './shared/browser-file-io/index.js';
 import {
   applyHeaderRowOptions,
+  parseDelimitedTextAsHeaderRows,
+} from './shared/tabular-io/index.js';
+import {
   detectTabularType,
-  parseCsvOrTsvText,
   parseXlsxArrayBuffer
 } from './tabular/parseTabular.js';
 import {
@@ -158,7 +160,7 @@ async function handlePreviewFile(stagedId) {
     // Browser file I/O stops here; CSV/TSV/XLSX parser contracts are a separate capability.
     const tabular = await (kind === 'xlsx'
       ? parseXlsxArrayBuffer(await readFileAsArrayBuffer(file))
-      : parseCsvOrTsvText(await readFileAsText(file), options.delimiterHint));
+      : parseDelimitedTextAsHeaderRows(await readFileAsText(file), options.delimiterHint));
 
     const normalized = normalizeTabularForOptions(tabular, options);
     const preview = normalized.rows.slice(0, 5);
@@ -202,7 +204,7 @@ async function handleRun() {
     // Browser file I/O stops here; CSV/TSV/XLSX parser contracts are a separate capability.
     const tabular = await (kind === 'xlsx'
       ? parseXlsxArrayBuffer(await readFileAsArrayBuffer(file))
-      : parseCsvOrTsvText(await readFileAsText(file), options.delimiterHint));
+      : parseDelimitedTextAsHeaderRows(await readFileAsText(file), options.delimiterHint));
 
     const normalized = normalizeTabularForOptions(tabular, options);
 

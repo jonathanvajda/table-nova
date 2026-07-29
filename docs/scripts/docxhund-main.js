@@ -7,11 +7,11 @@ import { serializePartsToTurtle } from './rdf-writer.js';
 import {
   appendLog,
   clearLog,
-  downloadText,
   getUiElements,
   renderPartsTable,
   renderSummary
 } from './ui.js';
+import { downloadTextFile } from '../app/shared/browser-file-io/index.js';
 
 var ui = getUiElements();
 var latestOutput = '';
@@ -94,7 +94,7 @@ function handleDownload() {
   if (!latestOutput) {
     return;
   }
-  downloadText(latestFilename, latestOutput, 'text/turtle');
+  downloadTextFile(latestFilename, latestOutput, { mimeType: 'text/turtle' });
 }
 
 ui.processBtn.addEventListener('click', function () {

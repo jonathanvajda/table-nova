@@ -1,7 +1,6 @@
 // docs/scripts/ui.js
 
 import { escapeHtml } from './utils.js';
-import { downloadTextFile } from '../app/shared/browser-file-io/index.js';
 
 /**
  * DOM helpers and rendering.
@@ -94,12 +93,3 @@ export function renderPartsTable(target, parts) {
     '</table>';
 }
 
-/**
- * Trigger a text download.
- * @param {string} filename
- * @param {string} content
- * @param {string} mimeType
- */
-export function downloadText(filename, content, mimeType) {
-  downloadTextFile(filename, content, { mimeType });
-}
