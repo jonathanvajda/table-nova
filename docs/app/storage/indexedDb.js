@@ -1,6 +1,16 @@
 /**
- * @file IndexedDB storage for Table Nova runs (named graphs).
+ * @file Project-portfolio storage for Table Nova runs.
  */
+
+import {
+  DEFAULT_PROJECT_PORTFOLIO_PROJECT_ID,
+  createProjectPortfolioStores,
+  ensureProjectPortfolioProject,
+  openProjectPortfolioDatabase
+} from '../shared/indexeddb-data-management/index.js';
+
+const TABLE_NOVA_PROJECT_ID = DEFAULT_PROJECT_PORTFOLIO_PROJECT_ID;
+const TABLE_NOVA_RUN_KIND = 'tabular-to-rdf';
 
 /**
  * @typedef {import('../rdf/buildDataset.js').QuadRecord} QuadRecord
@@ -18,99 +28,90 @@
  * @property {Record<string, string[]>} [sampleValuesByPredicate]
  */
 
-const DB_NAME = 'table-nova';
-const DB_VERSION = 1;
-const STORE_RUNS = 'runs';
-
 /**
- * Opens (or creates) the Table Nova IndexedDB database.
- * @returns {Promise<IDBDatabase>}
+ * Opens the shared project portfolio for Table Nova.
+ *
+ * @returns {Promise<{db: IDBDatabase, stores: ReturnType<typeof createProjectPortfolioStores>}>}
  */
-export function openTableNovaDb() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(STORE_RUNS)) {
-        const store = db.createObjectStore(STORE_RUNS, { keyPath: 'graphIri' });
-        store.createIndex('createdAtIso', 'createdAtIso', { unique: false });
-      }
-    };
-
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error || new Error('Failed to open IndexedDB.'));
+export async function openTableNovaDb() {
+  const db = await openProjectPortfolioDatabase();
+  const stores = createProjectPortfolioStores(db);
+  await ensureProjectPortfolioProject(stores, {
+    projectId: TABLE_NOVA_PROJECT_ID,
+    label: 'Default Project',
+    storageBackend: 'indexeddb'
   });
+  return { db, stores };
 }
 
 /**
- * Stores a run.
- * @param {IDBDatabase} db
+ * Stores a Table Nova transformation run in the shared portfolio.
+ *
+ * @param {{stores: ReturnType<typeof createProjectPortfolioStores>}} db
  * @param {StoredRun} run
  * @returns {Promise<void>}
  */
-export function putRun(db, run) {
-  return tx(db, 'readwrite', (store) => store.put(run));
-}
-
-/**
- * Lists runs (metadata only).
- * @param {IDBDatabase} db
- * @returns {Promise<Array<Pick<StoredRun,'graphIri'|'filename'|'createdAtIso'>>>}
- */
-export function listRuns(db) {
-  return new Promise((resolve, reject) => {
-    const req = db.transaction(STORE_RUNS, 'readonly').objectStore(STORE_RUNS).getAll();
-    req.onsuccess = () => {
-      const all = /** @type {StoredRun[]} */ (req.result || []);
-      const sorted = all
-        .map(({ graphIri, filename, createdAtIso }) => ({ graphIri, filename, createdAtIso }))
-        .sort((a, b) => String(b.createdAtIso).localeCompare(String(a.createdAtIso)));
-      resolve(sorted);
-    };
-    req.onerror = () => reject(req.error || new Error('Failed to list runs.'));
+export async function putRun(db, run) {
+  const runId = createRunIdFromGraphIri(run.graphIri);
+  await db.stores.runs.storeRunRecord({
+    runId,
+    projectId: TABLE_NOVA_PROJECT_ID,
+    runKind: TABLE_NOVA_RUN_KIND,
+    label: run.filename || run.graphIri,
+    createdAt: run.createdAtIso,
+    payload: { ...run, runId, appId: 'table-nova' },
+    inputArtifactIds: [],
+    outputArtifactIds: []
   });
 }
 
 /**
- * Deletes a run by graph IRI.
- * @param {IDBDatabase} db
- * @param {string} graphIri
- * @returns {Promise<void>}
+ * Lists Table Nova runs as metadata expected by the existing UI.
+ *
+ * @param {{stores: ReturnType<typeof createProjectPortfolioStores>}} db
+ * @returns {Promise<Array<Pick<StoredRun,'graphIri'|'filename'|'createdAtIso'>>>}
  */
-export function deleteRun(db, graphIri) {
-  return tx(db, 'readwrite', (store) => store.delete(graphIri));
+export async function listRuns(db) {
+  const records = await db.stores.runs.listRunRecords({
+    projectId: TABLE_NOVA_PROJECT_ID,
+    runKind: TABLE_NOVA_RUN_KIND
+  });
+  return records
+    .map((record) => record.payload)
+    .filter(Boolean)
+    .map(({ graphIri, filename, createdAtIso }) => ({ graphIri, filename, createdAtIso }))
+    .sort((a, b) => String(b.createdAtIso).localeCompare(String(a.createdAtIso)));
 }
 
 /**
- * Gets a full run (including quads) by graph IRI.
- * @param {IDBDatabase} db
+ * Deletes a Table Nova run by graph IRI.
+ *
+ * @param {{stores: ReturnType<typeof createProjectPortfolioStores>}} db
+ * @param {string} graphIri
+ * @returns {Promise<void>}
+ */
+export async function deleteRun(db, graphIri) {
+  await db.stores.runs.deleteRunRecord(createRunIdFromGraphIri(graphIri));
+}
+
+/**
+ * Gets a full Table Nova run by graph IRI.
+ *
+ * @param {{stores: ReturnType<typeof createProjectPortfolioStores>}} db
  * @param {string} graphIri
  * @returns {Promise<StoredRun|null>}
  */
-export function getRunDataset(db, graphIri) {
-  return new Promise((resolve, reject) => {
-    const req = db.transaction(STORE_RUNS, 'readonly').objectStore(STORE_RUNS).get(graphIri);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = () => reject(req.error || new Error('Failed to read run.'));
-  });
+export async function getRunDataset(db, graphIri) {
+  const record = await db.stores.runs.getRunRecord(createRunIdFromGraphIri(graphIri));
+  return record?.payload || null;
 }
 
 /**
- * Runs a single object store operation inside a transaction.
- * @param {IDBDatabase} db
- * @param {IDBTransactionMode} mode
- * @param {(store: IDBObjectStore) => IDBRequest} op
- * @returns {Promise<void>}
+ * Converts Table Nova's existing graph-IRI key into a shared run id.
+ *
+ * @param {string} graphIri
+ * @returns {string}
  */
-export function tx(db, mode, op) {
-  return new Promise((resolve, reject) => {
-    const t = db.transaction(STORE_RUNS, mode);
-    const store = t.objectStore(STORE_RUNS);
-    op(store);
-
-    t.oncomplete = () => resolve();
-    t.onerror = () => reject(t.error || new Error('IndexedDB transaction failed.'));
-    t.onabort = () => reject(t.error || new Error('IndexedDB transaction aborted.'));
-  });
+function createRunIdFromGraphIri(graphIri) {
+  return `run:table-nova:${encodeURIComponent(String(graphIri || 'default'))}`;
 }
