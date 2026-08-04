@@ -15,7 +15,6 @@ const DEFAULT_PREFIXES = {
   ...namespacePrefixMapFromRegistry(),
   tablenova: 'https://example.org/TableNova/',
 };
-const NS = COMMON_NAMESPACE_IRIS;
 
 /**
  * Builds ontology Turtle that annotates generated column predicates.
@@ -48,12 +47,12 @@ export function buildOntologyDataset(columnSchemas) {
 
   const { DataFactory, Store } = N3;
   const store = new Store();
-  const rdfType = DataFactory.namedNode(NS.rdf.type);
-  const datatypeProperty = DataFactory.namedNode(NS.owl.DatatypeProperty);
-  const rdfsLabel = DataFactory.namedNode(NS.rdfs.label);
-  const rdfsRange = DataFactory.namedNode(NS.rdfs.range);
-  const rdfsComment = DataFactory.namedNode(NS.rdfs.comment);
-  const dctermsIdentifier = DataFactory.namedNode(NS.dcterms.identifier);
+  const rdfType = DataFactory.namedNode(COMMON_NAMESPACE_IRIS.rdf.type);
+  const datatypeProperty = DataFactory.namedNode(COMMON_NAMESPACE_IRIS.owl.DatatypeProperty);
+  const rdfsLabel = DataFactory.namedNode(COMMON_NAMESPACE_IRIS.rdfs.label);
+  const rdfsRange = DataFactory.namedNode(COMMON_NAMESPACE_IRIS.rdfs.range);
+  const rdfsComment = DataFactory.namedNode(COMMON_NAMESPACE_IRIS.rdfs.comment);
+  const dctermsIdentifier = DataFactory.namedNode(COMMON_NAMESPACE_IRIS.dcterms.identifier);
 
   for (const schema of columnSchemas || []) {
     const subject = DataFactory.namedNode(schema.predicateIri);

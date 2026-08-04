@@ -3,14 +3,18 @@
  */
 
 import { serializeDelimitedRecords } from './shared/tabular-io/index.js';
-import { namespacePrefixMapFromRegistry } from './shared/namespace-registry/namespace-registry.js';
+import {
+  COMMON_NAMESPACE_IRIS,
+  compactIriToCurie,
+  namespacePrefixMapFromRegistry
+} from './shared/namespace-registry/index.js';
 
 /**
  * @typedef {import('./rdf/schema.js').ColumnSchema} ColumnSchema
  * @typedef {import('./rdf/buildDataset.js').QuadRecord} QuadRecord
  */
 
-const XSD_NS = namespacePrefixMapFromRegistry().xsd;
+const REGISTERED_PREFIXES = namespacePrefixMapFromRegistry();
 const JSON_SCHEMA_DRAFT_2020_12 = 'https://json-schema.org/draft/2020-12/schema';
 const SAMPLE_LIMIT = 5;
 const UNIQUE_EXAMPLE_LIMIT = 2;
@@ -216,8 +220,9 @@ function formatExampleCell(values) {
  * @returns {string}
  */
 function formatDatatypeLabel(datatypeIri) {
-  const iri = String(datatypeIri || `${XSD_NS}string`);
-  return iri.startsWith(XSD_NS) ? `xsd:${iri.slice(XSD_NS.length)}` : iri;
+  const iri = String(datatypeIri || COMMON_NAMESPACE_IRIS.xsd.string);
+  const compact = compactIriToCurie(iri, REGISTERED_PREFIXES);
+  return compact.ok ? compact.value : iri;
 }
 
 /**
@@ -300,6 +305,7 @@ function buildJsonSchemaTitle(filename) {
  * @returns {string}
  */
 function datatypeLocalName(datatypeIri) {
-  const iri = String(datatypeIri || `${XSD_NS}string`);
-  return iri.startsWith(XSD_NS) ? iri.slice(XSD_NS.length) : '';
+  const iri = String(datatypeIri || COMMON_NAMESPACE_IRIS.xsd.string);
+  const compact = compactIriToCurie(iri, REGISTERED_PREFIXES);
+  return compact.ok && compact.value.startsWith('xsd:') ? compact.value.slice('xsd:'.length) : '';
 }
