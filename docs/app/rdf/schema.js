@@ -9,7 +9,6 @@ import { COMMON_NAMESPACE_IRIS } from '../shared/namespace-registry/namespace-re
  * @typedef {import('../state/types.js').HeaderStyle} HeaderStyle
  */
 
-const XSD_STRING = COMMON_NAMESPACE_IRIS.xsd.string;
 const SIMPLE_ACRONYMS = new Set(['ID', 'IRI', 'URI', 'URL', 'UUID', 'API', 'CSV', 'TSV', 'JSON', 'XML', 'HTML', 'RDF', 'RDFS', 'OWL']);
 
 /**
@@ -235,7 +234,7 @@ export function buildColumnSchemas({
       label,
       predicateLocalName,
       predicateIri: `${String(basePredicateIri ?? '')}${predicateLocalName}`,
-      datatypeIri: datatypesByColumnKey?.[key] || XSD_STRING
+      datatypeIri: datatypesByColumnKey?.[key] || COMMON_NAMESPACE_IRIS.xsd.string
     };
   });
 }
@@ -411,7 +410,7 @@ export async function buildLiteralObject(value, datatypeIri) {
   const N3 = await getN3();
   const { DataFactory } = N3;
   const v = String(value ?? '').trim();
-  const dt = String(datatypeIri ?? XSD_STRING);
+  const dt = String(datatypeIri ?? COMMON_NAMESPACE_IRIS.xsd.string);
 
   if (dt.endsWith('#boolean')) {
     return DataFactory.literal(toBooleanLexical(v), DataFactory.namedNode(dt));
