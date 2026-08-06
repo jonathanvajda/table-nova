@@ -1,6 +1,13 @@
 // docs/scripts/rdf-writer.js
 
-import { IRI, NS, PART_TYPES_WITH_TEXT_VALUE } from './config.js';
+import { COMMON_NAMESPACE_IRIS, namespacePrefixMapFromRegistry } from '../app/shared/namespace-registry/namespace-registry.js';
+import {
+  PART_TYPES_WITH_TEXT_VALUE,
+  TABLE_NOVA_DOCUMENT_NAMESPACE_IRI,
+  TABLE_NOVA_DOCUMENT_PART_IRIS
+} from './config.js';
+
+const STANDARD_PREFIXES = namespacePrefixMapFromRegistry();
 
 /**
  * Escape a JS string as a Turtle string literal.
@@ -52,60 +59,60 @@ function poLiteral(predicate, value) {
 export async function serializePartsToTurtle(parts) {
   var lines = [];
 
-  lines.push('@prefix rdf: <' + NS.rdf + '> .');
-  lines.push('@prefix rdfs: <' + NS.rdfs + '> .');
-  lines.push('@prefix owl: <' + NS.owl + '> .');
-  lines.push('@prefix dcterms: <' + NS.dcterms + '> .');
-  lines.push('@prefix cco: <' + NS.cco + '> .');
-  lines.push('@prefix bfo: <' + NS.bfo + '> .');
-  lines.push('@prefix ex: <' + NS.ex + '> .');
+  lines.push('@prefix rdf: <' + STANDARD_PREFIXES.rdf + '> .');
+  lines.push('@prefix rdfs: <' + STANDARD_PREFIXES.rdfs + '> .');
+  lines.push('@prefix owl: <' + STANDARD_PREFIXES.owl + '> .');
+  lines.push('@prefix dcterms: <' + STANDARD_PREFIXES.dcterms + '> .');
+  lines.push('@prefix cco2: <' + STANDARD_PREFIXES.cco2 + '> .');
+  lines.push('@prefix bfo: <' + STANDARD_PREFIXES.bfo + '> .');
+  lines.push('@prefix ex: <' + TABLE_NOVA_DOCUMENT_NAMESPACE_IRI + '> .');
   lines.push('');
 
   for (var i = 0; i < parts.length; i += 1) {
     var part = parts[i];
     var po = [];
 
-    po.push(poIri(NS.rdf + 'type', IRI.namedIndividual));
-    po.push(poIri(NS.rdf + 'type', IRI.informationContentEntity));
+    po.push(poIri(COMMON_NAMESPACE_IRIS.rdf.type, COMMON_NAMESPACE_IRIS.owl.NamedIndividual));
+    po.push(poIri(COMMON_NAMESPACE_IRIS.rdf.type, COMMON_NAMESPACE_IRIS.cco2.informationContentEntity));
 
     if (part.label) {
-      po.push(poLiteral(IRI.label, part.label));
+      po.push(poLiteral(COMMON_NAMESPACE_IRIS.rdfs.label, part.label));
     }
 
     if (part.partType) {
-      po.push(poLiteral(IRI.dctermsType, part.partType));
+      po.push(poLiteral(COMMON_NAMESPACE_IRIS.dcterms.type, part.partType));
     }
 
     if (PART_TYPES_WITH_TEXT_VALUE.has(part.partType) && part.textValue) {
-      po.push(poLiteral(IRI.hasTextValue, part.textValue));
+      po.push(poLiteral(COMMON_NAMESPACE_IRIS.cco2.hasTextValue, part.textValue));
     }
 
     if (part.parentIri) {
-      po.push(poIri(IRI.continuantPartOf, part.parentIri));
+      po.push(poIri(COMMON_NAMESPACE_IRIS.bfo.continuantPartOf, part.parentIri));
     }
 
     if (part.priorIri) {
-      po.push(poIri(IRI.hasImmediatelyPriorDocumentPart, part.priorIri));
+      po.push(poIri(TABLE_NOVA_DOCUMENT_PART_IRIS.hasImmediatelyPriorDocumentPart, part.priorIri));
     }
 
     if (part.posteriorIri) {
-      po.push(poIri(IRI.hasImmediatelyPosteriorDocumentPart, part.posteriorIri));
+      po.push(poIri(TABLE_NOVA_DOCUMENT_PART_IRIS.hasImmediatelyPosteriorDocumentPart, part.posteriorIri));
     }
 
     if (part.siblingIndex !== null && part.siblingIndex !== undefined) {
-      po.push(poLiteral(IRI.hasSiblingIndex, part.siblingIndex));
+      po.push(poLiteral(TABLE_NOVA_DOCUMENT_PART_IRIS.hasSiblingIndex, part.siblingIndex));
     }
 
     if (part.styleId) {
-      po.push(poLiteral(IRI.hasStyleId, part.styleId));
+      po.push(poLiteral(TABLE_NOVA_DOCUMENT_PART_IRIS.hasStyleId, part.styleId));
     }
 
     if (part.styleName) {
-      po.push(poLiteral(IRI.hasStyleName, part.styleName));
+      po.push(poLiteral(TABLE_NOVA_DOCUMENT_PART_IRIS.hasStyleName, part.styleName));
     }
 
     if (part.headingLevel !== null && part.headingLevel !== undefined) {
-      po.push(poLiteral(IRI.hasHeadingLevel, part.headingLevel));
+      po.push(poLiteral(TABLE_NOVA_DOCUMENT_PART_IRIS.hasHeadingLevel, part.headingLevel));
     }
 
     lines.push(iriRef(part.iri));
@@ -120,7 +127,7 @@ export async function serializePartsToTurtle(parts) {
     if (child.parentIri) {
       lines.push(
         iriRef(child.parentIri) + ' ' +
-        iriRef(IRI.hasContinuantPart) + ' ' +
+        iriRef(COMMON_NAMESPACE_IRIS.bfo.hasContinuantPart) + ' ' +
         iriRef(child.iri) + ' .'
       );
     }

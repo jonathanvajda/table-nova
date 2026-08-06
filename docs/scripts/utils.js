@@ -4,6 +4,8 @@
  * Small shared helpers.
  */
 
+import { createUuid } from '../app/shared/ontology-utils/index.js';
+
 /**
  * Ensure a base IRI ends with "/" or "#".
  * @param {string} baseIri
@@ -36,20 +38,6 @@ export function normalizePartType(value) {
 }
 
 /**
- * Create a GUID-like identifier.
- * @returns {string}
- */
-export function makeGuid() {
-  if (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') {
-    return globalThis.crypto.randomUUID().replace(/-/g, '');
-  }
-
-  var rand = Math.random().toString(16).slice(2);
-  var stamp = Date.now().toString(16);
-  return (stamp + rand + rand).slice(0, 32);
-}
-
-/**
  * Mint an instance IRI using the agreed pattern.
  * @param {string} baseIri
  * @param {string} partType
@@ -58,7 +46,7 @@ export function makeGuid() {
 export function mintInstanceIri(baseIri, partType) {
   var safeBase = normalizeBaseIri(baseIri);
   var safeType = normalizePartType(partType);
-  return safeBase + 'inst_' + safeType + '_' + makeGuid();
+  return safeBase + 'inst_' + safeType + '_' + createUuid({ removeHyphens: true });
 }
 
 /**

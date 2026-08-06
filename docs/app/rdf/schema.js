@@ -3,6 +3,11 @@
  */
 
 import { COMMON_NAMESPACE_IRIS } from '../shared/namespace-registry/namespace-registry.js';
+import {
+  coerceLexicalValueForXsdDatatype,
+  createUuid,
+  isAbsoluteIri
+} from '../shared/ontology-utils/index.js';
 
 /**
  * @typedef {import('../state/types.js').PredicateOptions} PredicateOptions
@@ -384,7 +389,7 @@ function toPredicatePascalToken(token) {
  */
 export function buildRowInstanceIri({ baseInstanceIri, rowIndex }) {
   const base = ensurePathIriBase(baseInstanceIri);
-  const uuid = crypto.randomUUID();
+  const uuid = createUuid();
   const rowNumber = String(Math.max(0, Math.floor(Number(rowIndex || 0))) + 1).padStart(6, '0');
   return `${base}row-${rowNumber}-${uuid}`;
 }
@@ -409,26 +414,8 @@ let _n3Mod = null;
 export async function buildLiteralObject(value, datatypeIri) {
   const N3 = await getN3();
   const { DataFactory } = N3;
-  const v = String(value ?? '').trim();
   const dt = String(datatypeIri ?? COMMON_NAMESPACE_IRIS.xsd.string);
-
-  if (dt.endsWith('#boolean')) {
-    return DataFactory.literal(toBooleanLexical(v), DataFactory.namedNode(dt));
-  }
-
-  if (dt.endsWith('#integer')) {
-    return DataFactory.literal(toIntegerLexical(v), DataFactory.namedNode(dt));
-  }
-
-  if (dt.endsWith('#decimal') || dt.endsWith('#double') || dt.endsWith('#float')) {
-    return DataFactory.literal(toNumberLexical(v), DataFactory.namedNode(dt));
-  }
-
-  if (dt.endsWith('#dateTime')) {
-    return DataFactory.literal(toDateTimeLexical(v), DataFactory.namedNode(dt));
-  }
-
-  return DataFactory.literal(v, DataFactory.namedNode(dt));
+  return DataFactory.literal(coerceLexicalValueForXsdDatatype(value, dt), DataFactory.namedNode(dt));
 }
 
 /**
@@ -437,7 +424,7 @@ export async function buildLiteralObject(value, datatypeIri) {
  * @returns {boolean}
  */
 export function looksLikeAbsoluteIri(s) {
-  return /^https?:\/\//i.test(String(s ?? ''));
+  return isAbsoluteIri(s);
 }
 
 /**

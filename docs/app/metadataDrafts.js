@@ -4,17 +4,17 @@
 
 import { serializeDelimitedRecords } from './shared/tabular-io/index.js';
 import {
-  COMMON_NAMESPACE_IRIS,
-  compactIriToCurie,
-  namespacePrefixMapFromRegistry
-} from './shared/namespace-registry/index.js';
+  coerceLexicalValueForXsdDatatype,
+  describeXsdDatatypeForJsonSchema,
+  formatDatatypeIriForDisplay,
+  getXsdDatatypeLocalName
+} from './shared/ontology-utils/index.js';
 
 /**
  * @typedef {import('./rdf/schema.js').ColumnSchema} ColumnSchema
  * @typedef {import('./rdf/buildDataset.js').QuadRecord} QuadRecord
  */
 
-const REGISTERED_PREFIXES = namespacePrefixMapFromRegistry();
 const JSON_SCHEMA_DRAFT_2020_12 = 'https://json-schema.org/draft/2020-12/schema';
 const SAMPLE_LIMIT = 5;
 const UNIQUE_EXAMPLE_LIMIT = 2;
@@ -220,9 +220,7 @@ function formatExampleCell(values) {
  * @returns {string}
  */
 function formatDatatypeLabel(datatypeIri) {
-  const iri = String(datatypeIri || COMMON_NAMESPACE_IRIS.xsd.string);
-  const compact = compactIriToCurie(iri, REGISTERED_PREFIXES);
-  return compact.ok ? compact.value : iri;
+  return formatDatatypeIriForDisplay(datatypeIri);
 }
 
 /**
@@ -230,37 +228,7 @@ function formatDatatypeLabel(datatypeIri) {
  * @returns {Record<string, any>}
  */
 function mapXsdDatatypeToJsonSchema(datatypeIri) {
-  const local = datatypeLocalName(datatypeIri);
-
-  if (INTEGER_TYPES.has(local)) {
-    return { type: 'integer' };
-  }
-
-  if (NUMBER_TYPES.has(local)) {
-    return { type: 'number' };
-  }
-
-  if (local === 'boolean') {
-    return { type: 'boolean' };
-  }
-
-  if (local === 'date') {
-    return { type: 'string', format: 'date' };
-  }
-
-  if (local === 'dateTime') {
-    return { type: 'string', format: 'date-time' };
-  }
-
-  if (local === 'time') {
-    return { type: 'string', format: 'time' };
-  }
-
-  if (local === 'anyURI') {
-    return { type: 'string', format: 'uri' };
-  }
-
-  return { type: 'string' };
+  return describeXsdDatatypeForJsonSchema(datatypeIri);
 }
 
 /**
@@ -288,7 +256,7 @@ function coerceExampleValue(value, datatypeIri) {
     if (trimmed === 'false' || trimmed === '0') return false;
   }
 
-  return trimmed;
+  return coerceLexicalValueForXsdDatatype(trimmed, datatypeIri);
 }
 
 /**
@@ -305,7 +273,5 @@ function buildJsonSchemaTitle(filename) {
  * @returns {string}
  */
 function datatypeLocalName(datatypeIri) {
-  const iri = String(datatypeIri || COMMON_NAMESPACE_IRIS.xsd.string);
-  const compact = compactIriToCurie(iri, REGISTERED_PREFIXES);
-  return compact.ok && compact.value.startsWith('xsd:') ? compact.value.slice('xsd:'.length) : '';
+  return getXsdDatatypeLocalName(datatypeIri);
 }

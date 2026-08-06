@@ -39,6 +39,7 @@ import {
   buildDraftMetadataArtifacts,
   buildSampleValuesByPredicate
 } from './metadataDrafts.js';
+import { createUuid } from './shared/ontology-utils/index.js';
 import {
   openTableNovaDb,
   putRun,
@@ -97,7 +98,7 @@ let lastOutput = null; // { filename, graphIri, datasets, quadsByScope, views, c
  */
 function toStagedFiles(files) {
   return Array.from(files).map((f) => ({
-    id: crypto.randomUUID(),
+    id: createUuid(),
     file: f,
     options: structuredClone(TABLENOVA_DEFAULTS.fileOptions)
   }));
