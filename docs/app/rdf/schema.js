@@ -5,8 +5,7 @@
 import { COMMON_NAMESPACE_IRIS } from '../shared/namespace-registry/namespace-registry.js';
 import {
   coerceLexicalValueForXsdDatatype,
-  createUuid,
-  isAbsoluteIri
+  createUuid
 } from '../shared/ontology-utils/index.js';
 
 /**
@@ -416,15 +415,6 @@ export async function buildLiteralObject(value, datatypeIri) {
   const { DataFactory } = N3;
   const dt = String(datatypeIri ?? COMMON_NAMESPACE_IRIS.xsd.string);
   return DataFactory.literal(coerceLexicalValueForXsdDatatype(value, dt), DataFactory.namedNode(dt));
-}
-
-/**
- * Determines whether a string looks like an absolute IRI.
- * @param {string} s
- * @returns {boolean}
- */
-export function looksLikeAbsoluteIri(s) {
-  return isAbsoluteIri(s);
 }
 
 /**

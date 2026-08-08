@@ -6,8 +6,7 @@ import { serializeDelimitedRecords } from './shared/tabular-io/index.js';
 import {
   coerceLexicalValueForXsdDatatype,
   describeXsdDatatypeForJsonSchema,
-  formatDatatypeIriForDisplay,
-  getXsdDatatypeLocalName
+  formatDatatypeIriForDisplay
 } from './shared/ontology-utils/index.js';
 
 /**
@@ -18,22 +17,6 @@ import {
 const JSON_SCHEMA_DRAFT_2020_12 = 'https://json-schema.org/draft/2020-12/schema';
 const SAMPLE_LIMIT = 5;
 const UNIQUE_EXAMPLE_LIMIT = 2;
-const INTEGER_TYPES = new Set([
-  'byte',
-  'int',
-  'integer',
-  'long',
-  'negativeInteger',
-  'nonNegativeInteger',
-  'nonPositiveInteger',
-  'positiveInteger',
-  'short',
-  'unsignedByte',
-  'unsignedInt',
-  'unsignedLong',
-  'unsignedShort'
-]);
-const NUMBER_TYPES = new Set(['decimal', 'double', 'float']);
 
 /**
  * Builds both draft metadata export artifacts.
@@ -102,7 +85,7 @@ export function buildDataDictionaryRows(columnSchemas, sampleValuesByPredicate) 
   return (columnSchemas || []).map((schema) => ({
     'data identifier': String(schema?.predicateLocalName || ''),
     'field name': String(schema?.label || schema?.originalHeader || schema?.key || ''),
-    datatype: formatDatatypeLabel(schema?.datatypeIri),
+    datatype: formatDatatypeIriForDisplay(schema?.datatypeIri),
     description: '',
     'char length': '',
     format: '',
@@ -145,9 +128,9 @@ export function buildJsonSchemaDocument(filename, columnSchemas, sampleValuesByP
   const properties = {};
 
   for (const schema of columnSchemas || []) {
-    const descriptor = mapXsdDatatypeToJsonSchema(schema?.datatypeIri);
+    const descriptor = describeXsdDatatypeForJsonSchema(schema?.datatypeIri);
     const examples = (sampleValuesByPredicate?.[schema?.predicateIri] || [])
-      .map((value) => coerceExampleValue(value, schema?.datatypeIri))
+      .map((value) => coerceLexicalValueForXsdDatatype(value, schema?.datatypeIri))
       .filter((value) => value !== undefined);
 
     properties[String(schema?.predicateLocalName || schema?.key || 'field')] = {
@@ -216,62 +199,10 @@ function formatExampleCell(values) {
 }
 
 /**
- * @param {string} datatypeIri
- * @returns {string}
- */
-function formatDatatypeLabel(datatypeIri) {
-  return formatDatatypeIriForDisplay(datatypeIri);
-}
-
-/**
- * @param {string} datatypeIri
- * @returns {Record<string, any>}
- */
-function mapXsdDatatypeToJsonSchema(datatypeIri) {
-  return describeXsdDatatypeForJsonSchema(datatypeIri);
-}
-
-/**
- * @param {string} value
- * @param {string} datatypeIri
- * @returns {string|number|boolean|undefined}
- */
-function coerceExampleValue(value, datatypeIri) {
-  const local = datatypeLocalName(datatypeIri);
-  const trimmed = String(value ?? '').trim();
-  if (!trimmed) return undefined;
-
-  if (INTEGER_TYPES.has(local)) {
-    const parsed = Number(trimmed);
-    return Number.isInteger(parsed) ? parsed : trimmed;
-  }
-
-  if (NUMBER_TYPES.has(local)) {
-    const parsed = Number(trimmed);
-    return Number.isFinite(parsed) ? parsed : trimmed;
-  }
-
-  if (local === 'boolean') {
-    if (trimmed === 'true' || trimmed === '1') return true;
-    if (trimmed === 'false' || trimmed === '0') return false;
-  }
-
-  return coerceLexicalValueForXsdDatatype(trimmed, datatypeIri);
-}
-
-/**
  * @param {string} filename
  * @returns {string}
  */
 function buildJsonSchemaTitle(filename) {
   const base = String(filename || 'tabular-source').replace(/\.[^.]+$/, '').trim();
   return base ? `${base} rows` : 'Tabular rows';
-}
-
-/**
- * @param {string} datatypeIri
- * @returns {string}
- */
-function datatypeLocalName(datatypeIri) {
-  return getXsdDatatypeLocalName(datatypeIri);
 }
