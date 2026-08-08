@@ -1,4 +1,6 @@
-const XSD = 'http://www.w3.org/2001/XMLSchema#';
+import { COMMON_NAMESPACE_IRIS, namespacePrefixMapFromRegistry } from '../docs/app/shared/namespace-registry/index.js';
+
+const PREFIXES = namespacePrefixMapFromRegistry();
 
 beforeAll(() => {
   globalThis.N3 = {
@@ -8,7 +10,7 @@ beforeAll(() => {
         termType: 'Literal',
         value,
         language: '',
-        datatype: datatype || { termType: 'NamedNode', value: `${XSD}string` }
+        datatype: datatype || { termType: 'NamedNode', value: COMMON_NAMESPACE_IRIS.xsd.string }
       }),
       defaultGraph: () => ({ termType: 'DefaultGraph', value: '' }),
       quad: (subject, predicate, object, graph) => ({
@@ -63,8 +65,8 @@ test('datasetToSerializations keeps Turtle terse while preserving non-string dat
   const p1 = DataFactory.namedNode('https://example.org/TableNova/hasName');
   const p2 = DataFactory.namedNode('https://example.org/TableNova/hasCount');
   const store = new Store();
-  store.addQuad(s, p1, DataFactory.literal('Router', DataFactory.namedNode(`${XSD}string`)));
-  store.addQuad(s, p2, DataFactory.literal('2', DataFactory.namedNode(`${XSD}integer`)));
+  store.addQuad(s, p1, DataFactory.literal('Router', DataFactory.namedNode(COMMON_NAMESPACE_IRIS.xsd.string)));
+  store.addQuad(s, p2, DataFactory.literal('2', DataFactory.namedNode(COMMON_NAMESPACE_IRIS.xsd.integer)));
 
   const ser = await datasetToSerializations({
     dataset: store,
@@ -72,7 +74,7 @@ test('datasetToSerializations keeps Turtle terse while preserving non-string dat
     prefixes: {
       tablenova: 'https://example.org/TableNova/',
       tablenovaid: 'https://example.org/TableNova/instance/',
-      xsd: XSD
+      xsd: PREFIXES.xsd
     }
   });
 
@@ -106,7 +108,7 @@ function formatTerm(term, prefixes) {
   if (term.termType === 'NamedNode') return compact(term.value, prefixes);
   if (term.termType === 'Literal') {
     const datatype = term.datatype?.value;
-    if (!datatype || datatype === `${XSD}string`) return `"${term.value}"`;
+    if (!datatype || datatype === COMMON_NAMESPACE_IRIS.xsd.string) return `"${term.value}"`;
     return `"${term.value}"^^${compact(datatype, prefixes)}`;
   }
   return '';
