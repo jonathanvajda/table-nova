@@ -4,10 +4,12 @@
 
 import {
   DEFAULT_PROJECT_PORTFOLIO_PROJECT_ID,
+  PROJECT_RECORD_JSONLD_CONTEXT,
   createProjectPortfolioStores,
   ensureProjectPortfolioProject,
   openProjectPortfolioDatabase
 } from '../shared/indexeddb-data-management/index.js';
+import { COMMON_NAMESPACE_IRIS } from '../shared/namespace-registry/index.js';
 
 const TABLE_NOVA_PROJECT_ID = DEFAULT_PROJECT_PORTFOLIO_PROJECT_ID;
 const TABLE_NOVA_RUN_KIND = 'tabular-to-rdf';
@@ -59,7 +61,10 @@ export async function putRun(db, run) {
     runKind: TABLE_NOVA_RUN_KIND,
     label: run.filename || run.graphIri,
     createdAt: run.createdAtIso,
-    payload: { ...run, runId, appId: 'table-nova' },
+    payload: convertTableNovaRunToJsonLd({ ...run, runId }),
+    metadata: {
+      [COMMON_NAMESPACE_IRIS.okea.appId]: 'table-nova'
+    },
     inputArtifactIds: [],
     outputArtifactIds: []
   });
@@ -77,7 +82,7 @@ export async function listRuns(db) {
     runKind: TABLE_NOVA_RUN_KIND
   });
   return records
-    .map((record) => record.payload)
+    .map((record) => readTableNovaRunFromJsonLd(record.payload))
     .filter(Boolean)
     .map(({ graphIri, filename, createdAtIso }) => ({ graphIri, filename, createdAtIso }))
     .sort((a, b) => String(b.createdAtIso).localeCompare(String(a.createdAtIso)));
@@ -103,7 +108,7 @@ export async function deleteRun(db, graphIri) {
  */
 export async function getRunDataset(db, graphIri) {
   const record = await db.stores.runs.getRunRecord(createRunIdFromGraphIri(graphIri));
-  return record?.payload || null;
+  return readTableNovaRunFromJsonLd(record?.payload) || null;
 }
 
 /**
@@ -114,4 +119,100 @@ export async function getRunDataset(db, graphIri) {
  */
 function createRunIdFromGraphIri(graphIri) {
   return `run:table-nova:${encodeURIComponent(String(graphIri || 'default'))}`;
+}
+
+/**
+ * Creates a JSON-LD literal for stored string values.
+ *
+ * @param {unknown} value Source value.
+ * @returns {{'@value': string, '@type': string}|null} JSON-LD literal.
+ */
+function createJsonLdStringLiteral(value) {
+  if (value === null || value === undefined || value === '') return null;
+  return {
+    '@value': String(value),
+    '@type': COMMON_NAMESPACE_IRIS.xsd.string
+  };
+}
+
+/**
+ * Creates a JSON-LD date-time literal.
+ *
+ * @param {unknown} value Source ISO timestamp.
+ * @returns {{'@value': string, '@type': string}|null} JSON-LD date-time literal.
+ */
+function createJsonLdDateTimeLiteral(value) {
+  if (!value) return null;
+  return {
+    '@value': String(value),
+    '@type': COMMON_NAMESPACE_IRIS.xsd.dateTime
+  };
+}
+
+/**
+ * Reads a scalar value from a JSON-LD literal, IRI reference, or legacy value.
+ *
+ * @param {object} node JSON-LD object.
+ * @param {string} iri Full property IRI.
+ * @param {unknown} [fallback=''] Fallback value.
+ * @returns {unknown} Resolved scalar.
+ */
+function readJsonLdScalarValueForIri(node, iri, fallback = '') {
+  const value = node?.[iri];
+  if (value && typeof value === 'object' && !Array.isArray(value) && '@value' in value) return value['@value'];
+  if (value && typeof value === 'object' && !Array.isArray(value) && '@id' in value) return value['@id'];
+  return value ?? fallback;
+}
+
+/**
+ * Converts Table Nova's app-facing run DTO to a registry-backed JSON-LD
+ * envelope for durable project-portfolio storage.
+ *
+ * The nested `rdf:value` payload preserves the existing UI DTO because the
+ * graph-row migration is a separate project-store concern.
+ *
+ * @param {StoredRun & {runId?: string}} run Table Nova run.
+ * @returns {object} JSON-LD run payload.
+ */
+export function convertTableNovaRunToJsonLd(run) {
+  const runId = run.runId || createRunIdFromGraphIri(run.graphIri);
+  return {
+    '@context': PROJECT_RECORD_JSONLD_CONTEXT,
+    '@id': runId,
+    '@type': COMMON_NAMESPACE_IRIS.cceo.ComputerProgramExecution,
+    [COMMON_NAMESPACE_IRIS.dcterms.identifier]: createJsonLdStringLiteral(runId),
+    [COMMON_NAMESPACE_IRIS.dcterms.title]: createJsonLdStringLiteral(run.filename || run.graphIri),
+    [COMMON_NAMESPACE_IRIS.dcterms.created]: createJsonLdDateTimeLiteral(run.createdAtIso),
+    [COMMON_NAMESPACE_IRIS.okea.graphIri]: createJsonLdStringLiteral(run.graphIri),
+    [COMMON_NAMESPACE_IRIS.okea.runKind]: createJsonLdStringLiteral(TABLE_NOVA_RUN_KIND),
+    [COMMON_NAMESPACE_IRIS.rdf.value]: {
+      quads: Array.isArray(run.quads) ? run.quads : [],
+      columnSchemas: Array.isArray(run.columnSchemas) ? run.columnSchemas : [],
+      ontologyTurtle: run.ontologyTurtle || '',
+      sampleValuesByPredicate: run.sampleValuesByPredicate || {}
+    }
+  };
+}
+
+/**
+ * Reads a Table Nova app-facing run DTO from the JSON-LD storage envelope.
+ * Legacy payloads are returned unchanged for existing browser sessions.
+ *
+ * @param {object|null|undefined} payload Stored run payload.
+ * @returns {StoredRun|null} App-facing run DTO.
+ */
+export function readTableNovaRunFromJsonLd(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  if (!payload['@context']) return payload;
+
+  const value = payload[COMMON_NAMESPACE_IRIS.rdf.value] || {};
+  return {
+    graphIri: String(readJsonLdScalarValueForIri(payload, COMMON_NAMESPACE_IRIS.okea.graphIri, '') || ''),
+    filename: String(readJsonLdScalarValueForIri(payload, COMMON_NAMESPACE_IRIS.dcterms.title, '') || ''),
+    createdAtIso: String(readJsonLdScalarValueForIri(payload, COMMON_NAMESPACE_IRIS.dcterms.created, '') || ''),
+    quads: Array.isArray(value.quads) ? value.quads : [],
+    columnSchemas: Array.isArray(value.columnSchemas) ? value.columnSchemas : [],
+    ontologyTurtle: value.ontologyTurtle || '',
+    sampleValuesByPredicate: value.sampleValuesByPredicate || {}
+  };
 }
