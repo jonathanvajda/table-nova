@@ -7,6 +7,13 @@ import {
   coerceLexicalValueForXsdDatatype,
   createUuid
 } from '../shared/ontology-utils/index.js';
+import {
+  buildLabelFromWords,
+  detectStringCaseStyle,
+  normalizeStringToCase,
+  normalizeStringToKebabCase,
+  splitStringToWords
+} from '../shared/normalization-utils/index.js';
 
 /**
  * @typedef {import('../state/types.js').PredicateOptions} PredicateOptions
@@ -36,15 +43,7 @@ const SIMPLE_ACRONYMS = new Set(['ID', 'IRI', 'URI', 'URL', 'UUID', 'API', 'CSV'
  * @returns {string}
  */
 export function slugify(s) {
-  return String(s ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/\./g, '-')              // dot becomes separator
-    .replace(/\s+/g, '-')             // whitespace to separator
-    .replace(/[^a-z0-9_-]+/g, '-')    // drop everything else -> separator
-    .replace(/-+/g, '-')              // collapse runs
-    .replace(/^-+|-+$/g, '')          // trim separators
-    || 'file';
+  return normalizeStringToKebabCase(s) || 'file';
 }
 
 /**
@@ -166,11 +165,8 @@ export function buildPredicateLocalNameFromTokens(tokens, predicateOptions) {
   const effective = prefixHas ? ['has', ...words] : words;
 
   if (effective.length === 0) return casing === 'PascalCase' ? 'Value' : casing === 'SHOUT_CASE' ? 'VALUE' : 'value';
-  if (casing === 'snake_case') return effective.map((t) => t.toLowerCase()).join('_');
-  if (casing === 'SHOUT_CASE') return effective.map((t) => t.toUpperCase()).join('_');
-  if (casing === 'PascalCase') return effective.map(toPredicatePascalToken).join('');
-  // default camelCase
-  return [effective[0].toLowerCase(), ...effective.slice(1).map(toPredicatePascalToken)].join('');
+  const sharedCase = casing === 'SHOUT_CASE' ? 'SHOUTING_SNAKE' : casing;
+  return normalizeStringToCase(effective.join(' '), sharedCase, { fallbackStyle: 'camelCase' });
 }
 
 /**
@@ -188,8 +184,9 @@ export function tokenizeWords(phrase) {
  * @returns {string}
  */
 export function capitalize(token) {
-  const s = String(token ?? '');
-  return s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : '';
+  const s = String(token ?? '').trim();
+  const upper = s.toUpperCase();
+  return SIMPLE_ACRONYMS.has(upper) ? upper : buildLabelFromWords([s]);
 }
 
 /**
@@ -278,14 +275,8 @@ export function columnSchemasByKey(columnSchemas) {
 export function detectHeaderStyle(value) {
   const s = String(value ?? '').trim();
   if (!s) return 'unknown';
-  if (/\s/.test(s)) return 'human';
-  if (/^[A-Z0-9]+(?:_[A-Z0-9]+)+$/.test(s)) return 'SHOUTING_SNAKE';
-  if (/^[a-z0-9]+(?:_[a-z0-9]+)+$/.test(s)) return 'snake_case';
   if (/^[A-Z0-9]+$/.test(s)) return 'SHOUT_CASE';
-  if (/^[a-z][A-Za-z0-9]*$/.test(s) && /[a-z0-9][A-Z]/.test(s)) return 'camelCase';
-  if (/^[A-Z][A-Za-z0-9]*$/.test(s) && (/[a-z0-9][A-Z]/.test(s) || /[A-Z][a-z]/.test(s))) return 'PascalCase';
-  if (/^[A-Za-z0-9]+$/.test(s)) return 'human';
-  return 'unknown';
+  return detectStringCaseStyle(s);
 }
 
 /**
@@ -294,17 +285,7 @@ export function detectHeaderStyle(value) {
  * @returns {string[]}
  */
 export function splitHeaderTokens(value) {
-  const prepared = String(value ?? '')
-    .trim()
-    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ')
-    .replace(/[^A-Za-z0-9 ]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  if (!prepared) return [];
-  return prepared.split(' ').map(normalizeToken).filter(Boolean);
+  return splitStringToWords(value).map(normalizeToken).filter(Boolean);
 }
 
 /**
@@ -314,8 +295,9 @@ export function splitHeaderTokens(value) {
  * @returns {string}
  */
 export function buildHumanLabel(tokens, fallback) {
-  const words = (tokens || []).map(labelToken).filter(Boolean);
-  return words.length > 0 ? words.join(' ') : (String(fallback ?? '').trim() || 'Column');
+  return buildLabelFromWords((tokens || []).map(labelToken).filter(Boolean), {
+    fallback: String(fallback ?? '').trim() || 'Column'
+  });
 }
 
 /**
@@ -364,17 +346,6 @@ function normalizeToken(token) {
  * @returns {string}
  */
 function labelToken(token) {
-  const s = String(token ?? '').trim();
-  if (!s) return '';
-  const upper = s.toUpperCase();
-  return SIMPLE_ACRONYMS.has(upper) ? upper : capitalize(s);
-}
-
-/**
- * @param {string} token
- * @returns {string}
- */
-function toPredicatePascalToken(token) {
   const s = String(token ?? '').trim();
   if (!s) return '';
   const upper = s.toUpperCase();
