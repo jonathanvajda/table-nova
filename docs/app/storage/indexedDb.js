@@ -117,7 +117,7 @@ export async function getRunDataset(db, graphIri) {
  * @param {string} graphIri
  * @returns {string}
  */
-function createRunIdFromGraphIri(graphIri) {
+export function createRunIdFromGraphIri(graphIri) {
   return `run:table-nova:${encodeURIComponent(String(graphIri || 'default'))}`;
 }
 
