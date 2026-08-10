@@ -13,6 +13,7 @@ import {
   downloadTextFile,
   readFileAsText
 } from './shared/browser-file-io/index.js';
+import { getMimeTypeForFormatKey } from './shared/format-registry/index.js';
 import {
   applyHeaderRowOptions,
   parseDelimitedTextAsHeaderRows,
@@ -760,11 +761,18 @@ async function serializeScopeKind(dataset, graphIri, prefixes, kind, options = {
  * @returns {string}
  */
 function getOutputMimeTypeForSerializationKind(kind) {
-  if (kind === 'turtle') return 'text/turtle';
-  if (kind === 'trig') return 'application/trig';
-  if (kind === 'ntriples') return 'application/n-triples';
-  if (kind === 'nquads') return 'application/n-quads';
-  return 'application/ld+json';
+  const formatKeys = {
+    turtle: 'turtle',
+    trig: 'trig',
+    ntriples: 'n-triples',
+    nquads: 'n-quads',
+    jsonldGraph: 'jsonld',
+    jsonldTriples: 'jsonld'
+  };
+  const result = getMimeTypeForFormatKey(formatKeys[kind]);
+  if (result.ok) return result.value.mimeType;
+  const binary = getMimeTypeForFormatKey('binary');
+  return binary.ok ? binary.value.mimeType : '';
 }
 
 /**
