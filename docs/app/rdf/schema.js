@@ -2,12 +2,24 @@
  * @file Table Nova RDF schema helpers (IRI + predicate building, literals).
  */
 
+import { COMMON_NAMESPACE_IRIS } from '../shared/namespace-registry/namespace-registry.js';
+import {
+  coerceLexicalValueForXsdDatatype,
+  createUuid
+} from '../shared/ontology-utils/index.js';
+import {
+  buildLabelFromWords,
+  detectStringCaseStyle,
+  normalizeStringToCase,
+  normalizeStringToKebabCase,
+  splitStringToWords
+} from '../shared/normalization-utils/index.js';
+
 /**
  * @typedef {import('../state/types.js').PredicateOptions} PredicateOptions
  * @typedef {import('../state/types.js').HeaderStyle} HeaderStyle
  */
 
-const XSD_STRING = 'http://www.w3.org/2001/XMLSchema#string';
 const SIMPLE_ACRONYMS = new Set(['ID', 'IRI', 'URI', 'URL', 'UUID', 'API', 'CSV', 'TSV', 'JSON', 'XML', 'HTML', 'RDF', 'RDFS', 'OWL']);
 
 /**
@@ -31,15 +43,7 @@ const SIMPLE_ACRONYMS = new Set(['ID', 'IRI', 'URI', 'URL', 'UUID', 'API', 'CSV'
  * @returns {string}
  */
 export function slugify(s) {
-  return String(s ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/\./g, '-')              // dot becomes separator
-    .replace(/\s+/g, '-')             // whitespace to separator
-    .replace(/[^a-z0-9_-]+/g, '-')    // drop everything else -> separator
-    .replace(/-+/g, '-')              // collapse runs
-    .replace(/^-+|-+$/g, '')          // trim separators
-    || 'file';
+  return normalizeStringToKebabCase(s) || 'file';
 }
 
 /**
@@ -161,11 +165,8 @@ export function buildPredicateLocalNameFromTokens(tokens, predicateOptions) {
   const effective = prefixHas ? ['has', ...words] : words;
 
   if (effective.length === 0) return casing === 'PascalCase' ? 'Value' : casing === 'SHOUT_CASE' ? 'VALUE' : 'value';
-  if (casing === 'snake_case') return effective.map((t) => t.toLowerCase()).join('_');
-  if (casing === 'SHOUT_CASE') return effective.map((t) => t.toUpperCase()).join('_');
-  if (casing === 'PascalCase') return effective.map(toPredicatePascalToken).join('');
-  // default camelCase
-  return [effective[0].toLowerCase(), ...effective.slice(1).map(toPredicatePascalToken)].join('');
+  const sharedCase = casing === 'SHOUT_CASE' ? 'SHOUTING_SNAKE' : casing;
+  return normalizeStringToCase(effective.join(' '), sharedCase, { fallbackStyle: 'camelCase' });
 }
 
 /**
@@ -183,8 +184,9 @@ export function tokenizeWords(phrase) {
  * @returns {string}
  */
 export function capitalize(token) {
-  const s = String(token ?? '');
-  return s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : '';
+  const s = String(token ?? '').trim();
+  const upper = s.toUpperCase();
+  return SIMPLE_ACRONYMS.has(upper) ? upper : buildLabelFromWords([s]);
 }
 
 /**
@@ -233,7 +235,7 @@ export function buildColumnSchemas({
       label,
       predicateLocalName,
       predicateIri: `${String(basePredicateIri ?? '')}${predicateLocalName}`,
-      datatypeIri: datatypesByColumnKey?.[key] || XSD_STRING
+      datatypeIri: datatypesByColumnKey?.[key] || COMMON_NAMESPACE_IRIS.xsd.string
     };
   });
 }
@@ -273,14 +275,8 @@ export function columnSchemasByKey(columnSchemas) {
 export function detectHeaderStyle(value) {
   const s = String(value ?? '').trim();
   if (!s) return 'unknown';
-  if (/\s/.test(s)) return 'human';
-  if (/^[A-Z0-9]+(?:_[A-Z0-9]+)+$/.test(s)) return 'SHOUTING_SNAKE';
-  if (/^[a-z0-9]+(?:_[a-z0-9]+)+$/.test(s)) return 'snake_case';
   if (/^[A-Z0-9]+$/.test(s)) return 'SHOUT_CASE';
-  if (/^[a-z][A-Za-z0-9]*$/.test(s) && /[a-z0-9][A-Z]/.test(s)) return 'camelCase';
-  if (/^[A-Z][A-Za-z0-9]*$/.test(s) && (/[a-z0-9][A-Z]/.test(s) || /[A-Z][a-z]/.test(s))) return 'PascalCase';
-  if (/^[A-Za-z0-9]+$/.test(s)) return 'human';
-  return 'unknown';
+  return detectStringCaseStyle(s);
 }
 
 /**
@@ -289,17 +285,7 @@ export function detectHeaderStyle(value) {
  * @returns {string[]}
  */
 export function splitHeaderTokens(value) {
-  const prepared = String(value ?? '')
-    .trim()
-    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ')
-    .replace(/[^A-Za-z0-9 ]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  if (!prepared) return [];
-  return prepared.split(' ').map(normalizeToken).filter(Boolean);
+  return splitStringToWords(value).map(normalizeToken).filter(Boolean);
 }
 
 /**
@@ -309,8 +295,9 @@ export function splitHeaderTokens(value) {
  * @returns {string}
  */
 export function buildHumanLabel(tokens, fallback) {
-  const words = (tokens || []).map(labelToken).filter(Boolean);
-  return words.length > 0 ? words.join(' ') : (String(fallback ?? '').trim() || 'Column');
+  return buildLabelFromWords((tokens || []).map(labelToken).filter(Boolean), {
+    fallback: String(fallback ?? '').trim() || 'Column'
+  });
 }
 
 /**
@@ -366,24 +353,13 @@ function labelToken(token) {
 }
 
 /**
- * @param {string} token
- * @returns {string}
- */
-function toPredicatePascalToken(token) {
-  const s = String(token ?? '').trim();
-  if (!s) return '';
-  const upper = s.toUpperCase();
-  return SIMPLE_ACRONYMS.has(upper) ? upper : capitalize(s);
-}
-
-/**
  * Builds a row instance IRI (FQDN base + UUID path segment).
  * @param {{baseInstanceIri: string, rowIndex: number}} params
  * @returns {string}
  */
 export function buildRowInstanceIri({ baseInstanceIri, rowIndex }) {
   const base = ensurePathIriBase(baseInstanceIri);
-  const uuid = crypto.randomUUID();
+  const uuid = createUuid();
   const rowNumber = String(Math.max(0, Math.floor(Number(rowIndex || 0))) + 1).padStart(6, '0');
   return `${base}row-${rowNumber}-${uuid}`;
 }
@@ -408,35 +384,8 @@ let _n3Mod = null;
 export async function buildLiteralObject(value, datatypeIri) {
   const N3 = await getN3();
   const { DataFactory } = N3;
-  const v = String(value ?? '').trim();
-  const dt = String(datatypeIri ?? 'http://www.w3.org/2001/XMLSchema#string');
-
-  if (dt.endsWith('#boolean')) {
-    return DataFactory.literal(toBooleanLexical(v), DataFactory.namedNode(dt));
-  }
-
-  if (dt.endsWith('#integer')) {
-    return DataFactory.literal(toIntegerLexical(v), DataFactory.namedNode(dt));
-  }
-
-  if (dt.endsWith('#decimal') || dt.endsWith('#double') || dt.endsWith('#float')) {
-    return DataFactory.literal(toNumberLexical(v), DataFactory.namedNode(dt));
-  }
-
-  if (dt.endsWith('#dateTime')) {
-    return DataFactory.literal(toDateTimeLexical(v), DataFactory.namedNode(dt));
-  }
-
-  return DataFactory.literal(v, DataFactory.namedNode(dt));
-}
-
-/**
- * Determines whether a string looks like an absolute IRI.
- * @param {string} s
- * @returns {boolean}
- */
-export function looksLikeAbsoluteIri(s) {
-  return /^https?:\/\//i.test(String(s ?? ''));
+  const dt = String(datatypeIri ?? COMMON_NAMESPACE_IRIS.xsd.string);
+  return DataFactory.literal(coerceLexicalValueForXsdDatatype(value, dt), DataFactory.namedNode(dt));
 }
 
 /**
@@ -490,7 +439,7 @@ async function getN3() {
   if (_n3Mod) return _n3Mod;
   _n3Mod = /** @type {any} */ (globalThis).N3;
   if (!_n3Mod) {
-    throw new Error('Global N3 not found. Ensure ./app/imports/n3.min.js is loaded before Table Nova modules.');
+    throw new Error('Global N3 not found. Ensure ./app/shared/vendor/n3.min.js is loaded before Table Nova modules.');
   }
   return _n3Mod;
 }

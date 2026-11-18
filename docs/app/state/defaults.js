@@ -2,6 +2,10 @@
  * @file Default app settings and namespace bases.
  */
 
+import { namespacePrefixMapFromRegistry } from '../shared/namespace-registry/namespace-registry.js';
+
+const STANDARD_PREFIXES = namespacePrefixMapFromRegistry();
+
 export const TABLENOVA_DEFAULTS = Object.freeze({
   // Swap these bases later when you have a real domain.
   baseInstanceIri: 'https://example.org/TableNova/instance/',
@@ -11,10 +15,10 @@ export const TABLENOVA_DEFAULTS = Object.freeze({
   prefixes: {
     tablenova: 'https://example.org/TableNova/',
     tablenovaid: 'https://example.org/TableNova/instance/',
-    xsd: 'http://www.w3.org/2001/XMLSchema#',
-    owl: 'http://www.w3.org/2002/07/owl#',
-    rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
-    dcterms: 'http://purl.org/dc/terms/'
+    xsd: STANDARD_PREFIXES.xsd,
+    owl: STANDARD_PREFIXES.owl,
+    rdfs: STANDARD_PREFIXES.rdfs,
+    dcterms: STANDARD_PREFIXES.dcterms
   },
 
   fileOptions: {

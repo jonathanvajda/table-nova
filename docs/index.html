@@ -108,6 +108,10 @@
 
     <!-- App Local CSS -->
     <link rel="stylesheet" href="./styles/table-nova.css" />
+    <link rel="modulepreload" href="./app/shared/namespace-registry/namespace-registry.js" />
+    <link rel="modulepreload" href="./app/shared/namespace-registry/curie.js" />
+    <link rel="modulepreload" href="./app/shared/namespace-registry/prefix-map.js" />
+    <link rel="modulepreload" href="./app/shared/namespace-registry/rdf-serialization-prefixes.js" />
 </head>
 
 <body data-page-id="table-nova">
@@ -241,9 +245,9 @@
   <aside id="toast-container" aria-live="polite" aria-relevant="additions"></aside>
 
   <!-- CDN -->
-  <script src="./app/imports/n3.min.js"></script>
-  <script src="./app/imports/jsonld.min.js"></script>
-  <script src="./app/imports/xlsx.full.min.js"></script>
+  <script src="./app/shared/vendor/n3.min.js"></script>
+  <script src="./app/shared/vendor/jsonld.min.js"></script>
+  <script src="./app/shared/vendor/xlsx.full.min.js"></script>
 
   <script>
     (function () {
@@ -287,6 +291,11 @@
   </script>
 
   <!-- Browser ESM imports via CDN -->
+  <link rel="modulepreload" href="./app/shared/format-registry/mime-registry.js" />
+  <link rel="modulepreload" href="./app/shared/browser-file-io/index.js" />
+  <link rel="modulepreload" href="./app/shared/tabular-io/index.js" />
+  <link rel="modulepreload" href="./app/shared/rdf-io/index.js" />
   <script type="module" src="./app/table-nova.js"></script>
 </body>
 </html>
+

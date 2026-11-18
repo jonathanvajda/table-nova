@@ -1,19 +1,11 @@
 // docs/scripts/docx-reader.js
 import JSZip from 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm';
+import { readFileAsArrayBuffer } from '../app/shared/browser-file-io/index.js';
 
 /**
  * Load a DOCX file and expose key XML parts as parsed XML documents.
  * This MVP reads only a subset of OOXML parts.
  */
-
-/**
- * Read a File as ArrayBuffer.
- * @param {File} file
- * @returns {Promise<ArrayBuffer>}
- */
-async function readFileAsArrayBuffer(file) {
-  return await file.arrayBuffer();
-}
 
 /**
  * Parse XML text into a browser XML document.

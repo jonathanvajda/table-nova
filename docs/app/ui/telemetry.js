@@ -2,6 +2,12 @@
  * @file UI telemetry helpers (logger, toasts, safe async wrapper).
  */
 
+import {
+  createScopedConsoleLogger,
+  inferToastSeverity,
+  renderToastNotification
+} from '../shared/ui-feedback/index.js';
+
 /**
  * @typedef {Object} Logger
  * @property {(event: string, data?: any) => void} info
@@ -15,24 +21,7 @@
  * @returns {Logger}
  */
 export function createLogger({ scope, enabled }) {
-  /**
-   * @param {'info'|'warn'|'error'} level
-   * @param {string} event
-   * @param {any} data
-   * @returns {void}
-   */
-  function emit(level, event, data) {
-    if (!enabled) return;
-    const payload = data ?? {};
-    // eslint-disable-next-line no-console
-    console[level](`[tablenova:${scope}] ${event}`, payload);
-  }
-
-  return Object.freeze({
-    info: (event, data) => emit('info', event, data),
-    warn: (event, data) => emit('warn', event, data),
-    error: (event, data) => emit('error', event, data)
-  });
+  return createScopedConsoleLogger({ scope: `tablenova:${scope}`, enabled });
 }
 
 /**
@@ -46,30 +35,19 @@ export function createLogger({ scope, enabled }) {
  * @returns {ToastBus}
  */
 export function createToastBus({ rootId }) {
-  const root = /** @type {HTMLElement|null} */ (document.getElementById(rootId));
-
-  /**
-   * @param {{title: string, body: string, kind?: 'success'|'warning'|'error'}} toast
-   * @returns {HTMLElement}
-   */
-  function buildToastEl({ title, body, kind }) {
-    const el = document.createElement('div');
-    const status = kind || inferToastKind(title);
-    el.className = `toast ${status} show`;
-    el.setAttribute('role', 'status');
-
-    const text = document.createElement('span');
-    text.textContent = body ? `${title}: ${body}` : title;
-    el.appendChild(text);
-    return el;
-  }
-
   return Object.freeze({
     show: ({ title, body, kind, timeoutMs = 2600 }) => {
-      if (!root) return;
-      const el = buildToastEl({ title, body, kind });
-      root.appendChild(el);
-      window.setTimeout(() => el.remove(), timeoutMs);
+      const result = renderToastNotification({
+        title,
+        message: body,
+        severity: kind,
+        timeoutMs,
+        containerId: rootId
+      });
+      if (!result.ok) {
+        // eslint-disable-next-line no-console
+        console.error('[tablenova:toast] render failed', result.error);
+      }
     }
   });
 }
@@ -80,10 +58,7 @@ export function createToastBus({ rootId }) {
  * @returns {'success'|'warning'|'error'}
  */
 export function inferToastKind(title) {
-  const t = String(title || '').toLowerCase();
-  if (t.includes('fail') || t.includes('error')) return 'error';
-  if (t.includes('nothing') || t.includes('removed') || t.includes('cleared') || t.includes('deleted')) return 'warning';
-  return 'success';
+  return inferToastSeverity(title);
 }
 
 /**

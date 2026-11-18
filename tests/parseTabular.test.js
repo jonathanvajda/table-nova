@@ -1,4 +1,10 @@
-import { applyHeaderRowOptions, detectTabularType, parseLine, parseCsvOrTsvText, detectDelimiterFromLine } from '../docs/app/tabular/parseTabular.js';
+import { detectTabularType } from '../docs/app/tabular/parseTabular.js';
+import {
+  applyHeaderRowOptions,
+  detectCsvOrTsvDelimiter,
+  parseDelimitedLine,
+  parseDelimitedTextAsHeaderRows
+} from '../docs/app/shared/tabular-io/index.js';
 
 test('detectTabularType detects extensions', () => {
   expect(detectTabularType('a.csv')).toBe('csv');
@@ -7,32 +13,32 @@ test('detectTabularType detects extensions', () => {
   expect(detectTabularType('a.unknown')).toBe('unknown');
 });
 
-test('detectDelimiterFromLine prefers tabs when more tabs than commas', () => {
-  expect(detectDelimiterFromLine('a,b,c')).toBe(',');
-  expect(detectDelimiterFromLine('a\tb\tc')).toBe('\t');
+test('shared detectCsvOrTsvDelimiter prefers tabs when more tabs than commas', () => {
+  expect(detectCsvOrTsvDelimiter('a,b,c')).toBe(',');
+  expect(detectCsvOrTsvDelimiter('a\tb\tc')).toBe('\t');
 });
 
-test('parseLine supports quotes and escaped quotes', () => {
-  expect(parseLine('a,"b,c",d', ',')).toEqual(['a', 'b,c', 'd']);
-  expect(parseLine('"a""b",c', ',')).toEqual(['a"b', 'c']);
+test('shared parseDelimitedLine supports quotes and escaped quotes', () => {
+  expect(parseDelimitedLine('a,"b,c",d', ',')).toEqual(['a', 'b,c', 'd']);
+  expect(parseDelimitedLine('"a""b",c', ',')).toEqual(['a"b', 'c']);
 });
 
-test('parseCsvOrTsvText returns header + rows', () => {
+test('shared parseDelimitedTextAsHeaderRows returns header + rows', () => {
   const t = 'first,last\nAda,Lovelace\nAlan,Turing\n';
-  const out = parseCsvOrTsvText(t, ',');
+  const out = parseDelimitedTextAsHeaderRows(t, ',');
   expect(out.header).toEqual(['first', 'last']);
   expect(out.rows).toEqual([['Ada', 'Lovelace'], ['Alan', 'Turing']]);
 });
 
 test('applyHeaderRowOptions can choose a later 1-based header row', () => {
-  const parsed = parseCsvOrTsvText('Report export\nGenerated today\nfirst,last\nAda,Lovelace\n', ',');
+  const parsed = parseDelimitedTextAsHeaderRows('Report export\nGenerated today\nfirst,last\nAda,Lovelace\n', ',');
   const out = applyHeaderRowOptions(parsed, true, 3);
   expect(out.header).toEqual(['first', 'last']);
   expect(out.rows).toEqual([['Ada', 'Lovelace']]);
 });
 
 test('applyHeaderRowOptions leaves no-header data unchanged', () => {
-  const parsed = parseCsvOrTsvText('a,b\n1,2\n', ',');
+  const parsed = parseDelimitedTextAsHeaderRows('a,b\n1,2\n', ',');
   const out = applyHeaderRowOptions(parsed, false, 2);
   expect(out).toBe(parsed);
 });

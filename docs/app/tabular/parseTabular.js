@@ -2,6 +2,8 @@
  * @file Parse CSV/TSV text and XLSX ArrayBuffers into a common tabular shape.
  */
 
+import { getSupportedMimeTypeForFilename } from '../shared/format-registry/mime-registry.js';
+
 /**
  * @typedef {'csv'|'tsv'|'xlsx'|'unknown'} TabularKind
  */
@@ -18,125 +20,24 @@
  * @returns {TabularKind}
  */
 export function detectTabularType(filename) {
+  const detected = getSupportedMimeTypeForFilename(filename);
+  if (detected?.ok && detected.value.category === 'tabular') {
+    if (detected.value.mimeType === 'text/csv') return 'csv';
+    if (detected.value.mimeType === 'text/tab-separated-values') return 'tsv';
+    if (
+      detected.value.mimeType === 'application/vnd.ms-excel' ||
+      detected.value.mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ) {
+      return 'xlsx';
+    }
+  }
+
   const lower = String(filename || '').toLowerCase();
   if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) return 'xlsx';
   if (lower.endsWith('.tsv')) return 'tsv';
   if (lower.endsWith('.csv')) return 'csv';
   if (lower.endsWith('.txt')) return 'csv';
   return 'unknown';
-}
-
-/**
- * Heuristically detects delimiter from a single line.
- * @param {string} line
- * @returns {','|'\t'}
- */
-export function detectDelimiterFromLine(line) {
-  const comma = (line.match(/,/g) || []).length;
-  const tab = (line.match(/\t/g) || []).length;
-  return tab > comma ? '\t' : ',';
-}
-
-/**
- * Splits CSV/TSV into rows of cells.
- * Minimal RFC4180-ish parsing: supports quotes and escaped quotes.
- * @param {string} text
- * @param {','|'\t'|null} delimiterHint
- * @returns {TabularData}
- */
-export function parseCsvOrTsvText(text, delimiterHint = null) {
-  const src = String(text ?? '');
-  const lines = src.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-  const firstNonEmpty = lines.find((l) => l.trim().length > 0) ?? '';
-  const delim = delimiterHint ?? detectDelimiterFromLine(firstNonEmpty);
-
-  /** @type {string[][]} */
-  const all = [];
-  for (const line of lines) {
-    if (line.length === 0) continue;
-    all.push(parseLine(line, delim));
-  }
-
-  if (all.length === 0) return { header: null, rows: [] };
-  const header = normalizeRow(all[0]);
-  const rows = all.slice(1).map(normalizeRow);
-  return { header, rows };
-}
-
-/**
- * Parses a single CSV/TSV line.
- * @param {string} line
- * @param {','|'\t'} delim
- * @returns {string[]}
- */
-export function parseLine(line, delim) {
-  /** @type {string[]} */
-  const out = [];
-  let cur = '';
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i += 1) {
-    const ch = line[i];
-
-    if (inQuotes) {
-      if (ch === '"') {
-        const next = line[i + 1];
-        if (next === '"') {
-          cur += '"';
-          i += 1;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        cur += ch;
-      }
-    } else {
-      if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === delim) {
-        out.push(cur);
-        cur = '';
-      } else {
-        cur += ch;
-      }
-    }
-  }
-
-  out.push(cur);
-  return out;
-}
-
-/**
- * Normalizes a row to trimmed strings (keeps empty cells).
- * @param {string[]} row
- * @returns {string[]}
- */
-export function normalizeRow(row) {
-  return (row || []).map((c) => String(c ?? '').trim());
-}
-
-/**
- * Applies header row options after parsing.
- * @param {TabularData} tabular
- * @param {boolean} treatFirstRowAsHeader
- * @param {number} headerRowNumber 1-based row number
- * @returns {TabularData}
- */
-export function applyHeaderRowOptions(tabular, treatFirstRowAsHeader, headerRowNumber = 1) {
-  if (!treatFirstRowAsHeader) return tabular;
-
-  const allRows = [
-    ...(Array.isArray(tabular.header) ? [tabular.header] : []),
-    ...(tabular.rows || [])
-  ];
-  if (allRows.length === 0) return { header: null, rows: [] };
-
-  const requested = Math.max(1, Math.floor(Number(headerRowNumber || 1)));
-  const headerIndex = Math.min(allRows.length - 1, requested - 1);
-  return {
-    header: allRows[headerIndex],
-    rows: allRows.slice(headerIndex + 1)
-  };
 }
 
 /**

@@ -1,4 +1,17 @@
 // ./app/site-header.js
+import {
+  DEFAULT_PROJECT_PORTFOLIO_PROJECT_ID,
+  createProjectPortfolioStores,
+  ensureProjectPortfolioProject,
+  inspectIndexedDbDatabase,
+  openProjectPortfolioDatabase
+} from './shared/indexeddb-data-management/index.js';
+import {
+  applyThemePreference,
+  readThemePreference,
+  toggleThemePreference
+} from './shared/ui-feedback/index.js';
+
 (() => {
   "use strict";
 
@@ -87,6 +100,35 @@
         ],
     };
 
+  const APP_UTILITIES = {
+    ontoeagle: {
+      settings: [],
+      idb: {
+        name: "OntoEagleDB",
+        stores: ["settings", "datasets", "documents", "index"],
+        label: "OntoEagle local data",
+      },
+      dataManagement: [
+        {
+          id: "catalog-data",
+          label: "Manage catalog data",
+          icon: "./images/file-icon-green.svg",
+          event: "ontoeagle:open-catalog-data",
+        },
+      ],
+      tools: [
+        {
+          id: "slim-bundle",
+          label: "Slim bundle",
+          href: "./bundler.html",
+          badgeId: "ontShoppingCartCount",
+          icon: "shopping-cart",
+        },
+      ],
+    },
+  };
+  APP_UTILITIES["ontology-viewer"] = APP_UTILITIES.ontoeagle;
+
   function escapeHtml(s) {
     return String(s)
       .replaceAll("&", "&amp;")
@@ -105,6 +147,106 @@
     const map = HEADER_CONFIG.brand?.toolLogoByPageId || {};
     const fallback = HEADER_CONFIG.brand?.defaultToolLogo || { src: "", alt: "" };
     return (pageId && map[pageId]) ? map[pageId] : fallback;
+  }
+
+  function pageUtilities() {
+    return APP_UTILITIES[getPageId()] || {};
+  }
+
+  function dbStatusConfig() {
+    const body = document.body;
+    const idb = pageUtilities().idb || {};
+    const dbName = idb.name || body?.getAttribute("data-db-name")?.trim() || "";
+    const stores = (Array.isArray(idb.stores) ? idb.stores : (body?.getAttribute("data-db-stores") || "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean));
+    return {
+      dbName,
+      stores,
+      label: idb.label || dbName || "Local data",
+    };
+  }
+
+  function shoppingCartSvg() {
+    return `
+      <svg class="sitehdr-utilIconSvg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+        <path d="M14 2C14 1.44772 13.5523 1 13 1C12.4477 1 12 1.44772 12 2V8.58579L9.70711 6.29289C9.31658 5.90237 8.68342 5.90237 8.29289 6.29289C7.90237 6.68342 7.90237 7.31658 8.29289 7.70711L12.2929 11.7071C12.6834 12.0976 13.3166 12.0976 13.7071 11.7071L17.7071 7.70711C18.0976 7.31658 18.0976 6.68342 17.7071 6.29289C17.3166 5.90237 16.6834 5.90237 16.2929 6.29289L14 8.58579V2ZM1 3C1 2.44772 1.44772 2 2 2H2.47241C3.82526 2 5.01074 2.90547 5.3667 4.21065L5.78295 5.73688L7.7638 13H18.236L20.2152 5.73709C20.3604 5.20423 20.9101 4.88998 21.4429 5.03518C21.9758 5.18038 22.29 5.73006 22.1448 6.26291L20.1657 13.5258C19.9285 14.3962 19.1381 15 18.236 15H8V16C8 16.5523 8.44772 17 9 17H16.5H18C18.5523 17 19 17.4477 19 18C19 18.212 18.934 18.4086 18.8215 18.5704C18.9366 18.8578 19 19.1715 19 19.5C19 20.8807 17.8807 22 16.5 22C15.1193 22 14 20.8807 14 19.5C14 19.3288 14.0172 19.1616 14.05 19H10.95C10.9828 19.1616 11 19.3288 11 19.5C11 20.8807 9.88071 22 8.5 22C7.11929 22 6 20.8807 6 19.5C6 18.863 6.23824 18.2816 6.63048 17.8402C6.23533 17.3321 6 16.6935 6 16V14.1339L3.85342 6.26312L3.43717 4.73688C3.31852 4.30182 2.92336 4 2.47241 4H2C1.44772 4 1 3.55228 1 3ZM16 19.5C16 19.2239 16.2239 19 16.5 19C16.7761 19 17 19.2239 17 19.5C17 19.7761 16.7761 20 16.5 20C16.2239 20 16 19.7761 16 19.5ZM8 19.5C8 19.2239 8.22386 19 8.5 19C8.77614 19 9 19.2239 9 19.5C9 19.7761 8.77614 20 8.5 20C8.22386 20 8 19.7761 8 19.5Z"/>
+      </svg>
+    `;
+  }
+
+  function utilityIcon(item) {
+    if (item.icon === "shopping-cart") return shoppingCartSvg();
+    return `<img class="sitehdr-utilIconImg" src="${escapeHtml(item.icon || "")}" alt="" aria-hidden="true" />`;
+  }
+
+  function renderUtilityAction(item, extraClass = "") {
+    const badge = item.badgeId
+      ? `<span class="sitehdr-utilBadge" id="${escapeHtml(item.badgeId)}" aria-label="0 items">0</span>`
+      : "";
+    const icon = utilityIcon(item);
+    const label = escapeHtml(item.label || "Header action");
+    if (item.href) {
+      return `<a class="sitehdr-utilBtn ${extraClass}" href="${escapeHtml(item.href)}" aria-label="${label}" title="${label}">${icon}${badge}</a>`;
+    }
+    return `<button class="sitehdr-utilBtn ${extraClass}" type="button" data-sitehdr-event="${escapeHtml(item.event || "")}" aria-label="${label}" title="${label}">${icon}${badge}</button>`;
+  }
+
+  function renderSettingsActions(settings) {
+    if (!Array.isArray(settings) || !settings.length) return "";
+    if (settings.length === 1) {
+      return renderUtilityAction({
+        ...settings[0],
+        icon: settings[0].icon || "./images/settings-cog-icon.svg",
+      });
+    }
+    return renderUtilityAction({
+      label: "App settings",
+      icon: "./images/settings-cog-icon.svg",
+      event: "sitehdr:open-settings-menu",
+    });
+  }
+
+  function dbStatusHtml() {
+    const config = dbStatusConfig();
+    if (!config.dbName) return "";
+
+    return `
+      <div class="sitehdr-db" data-db-status="idle" title="${escapeHtml(config.label)}">
+        <div class="sitehdr-db__status" aria-live="polite" aria-atomic="true">
+          <span class="sitehdr-db__bulb" aria-hidden="true"></span>
+          <span class="sitehdr-db__text">DB idle</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function appUtilityHtml() {
+    const utilities = pageUtilities();
+    const settings = renderSettingsActions(utilities.settings);
+    const data = Array.isArray(utilities.dataManagement)
+      ? utilities.dataManagement.map((item) => renderUtilityAction({
+          icon: "./images/file-icon-green.svg",
+          ...item,
+        }, "sitehdr-utilBtn--data")).join("")
+      : "";
+    const tools = Array.isArray(utilities.tools)
+      ? utilities.tools.map((item) => renderUtilityAction(item, "sitehdr-utilBtn--tool")).join("")
+      : "";
+    const db = dbStatusHtml();
+    if (!settings && !data && !tools && !db) return "";
+
+    return `
+      <div class="sitehdr-appTools" aria-label="App tools">
+        ${db}
+        <div class="sitehdr-appToolActions">
+          ${settings}
+          ${data}
+          ${tools}
+        </div>
+      </div>
+    `;
   }
 
   function buildSectionsHtml(currentPageId) {
@@ -169,7 +311,8 @@
 
           ${buildSectionsHtml(pageId)}
 
-          <div id="light-dark-toggle" style="margin-left: auto;">
+          <div class="sitehdr-utility">
+          <div id="light-dark-toggle">
             <button
               type="button"
               class="theme-toggle"
@@ -186,21 +329,83 @@
             <span class="theme-toggle__sr">Toggle theme</span>
           </button>
           </div>
+          ${appUtilityHtml()}
+          </div>
         </div>
       </div>
     `;
   }
 
+  function updateDbStatus(state = "idle", text = "") {
+    const widget = document.querySelector(".sitehdr-db");
+    if (!widget) return;
+
+    const config = dbStatusConfig();
+    const label = widget.querySelector(".sitehdr-db__text");
+    const normalized = ["idle", "initializing", "reading", "writing", "ready", "error"].includes(state)
+      ? state
+      : "idle";
+    const fallbackText = {
+      idle: "DB idle",
+      initializing: "DB initializing",
+      reading: "DB reading",
+      writing: "DB writing",
+      ready: "DB ready",
+      error: "DB error",
+    }[normalized];
+
+    widget.setAttribute("data-db-status", normalized);
+    widget.title = `${config.dbName}${config.stores.length ? ` (${config.stores.join(", ")})` : ""}`;
+    if (label) label.textContent = text || fallbackText;
+  }
+
+  async function inspectDbStatus() {
+    const config = dbStatusConfig();
+    if (!config.dbName) return;
+
+    try {
+      const status = await inspectIndexedDbDatabase(config.dbName);
+      if (!status.available || status.exists === null) {
+        updateDbStatus("idle", "DB idle");
+        return;
+      }
+
+      if (!status.exists) {
+        updateDbStatus("idle", "DB not created");
+        return;
+      }
+
+      updateDbStatus("reading", "DB checking");
+      const missing = config.stores.filter((store) => !status.stores.includes(store));
+      updateDbStatus(missing.length ? "error" : "ready", missing.length ? "DB store missing" : "DB ready");
+    } catch (_err) {
+      updateDbStatus("error", "DB unavailable");
+    }
+  }
+
   // script loaded at end of body => DOM is ready
   renderHeader();
+  window.SiteHeaderDBStatus = { set: updateDbStatus, inspect: inspectDbStatus };
+  document.addEventListener("click", (event) => {
+    const button = event.target?.closest?.("[data-sitehdr-event]");
+    if (!button) return;
+    const eventName = button.getAttribute("data-sitehdr-event");
+    if (!eventName) return;
+    document.dispatchEvent(new CustomEvent(eventName, { detail: { source: button } }));
+  });
+  document.addEventListener("sitehdr:db-status", (event) => {
+    updateDbStatus(event.detail?.state, event.detail?.text);
+  });
+  inspectDbStatus();
   
 })();
 
 // Theme toggle: sets <html data-theme="light|dark"> and persists choice.
   (() => {
-    const STORAGE_KEY = 'ont-theme'; // 'light' | 'dark'
+    const SETTING_KEY = 'ui.theme'; // 'light' | 'dark'
     const root = document.documentElement;
     const btn = document.getElementById('themeToggle');
+    let settingsStorePromise = null;
 
     if (!btn) return;
 
@@ -210,29 +415,51 @@
         : 'light';
     };
 
-    const getSavedTheme = () => {
-      const v = localStorage.getItem(STORAGE_KEY);
-      return (v === 'light' || v === 'dark') ? v : null;
+    const getSettingsStore = async () => {
+      if (!settingsStorePromise) {
+        settingsStorePromise = openProjectPortfolioDatabase()
+          .then((db) => {
+            const stores = createProjectPortfolioStores(db, {
+              projectId: DEFAULT_PROJECT_PORTFOLIO_PROJECT_ID
+            });
+            return ensureProjectPortfolioProject(stores).then(() => stores.settings);
+          });
+      }
+      return settingsStorePromise;
+    };
+
+    const getSavedTheme = async () => {
+      const settings = await getSettingsStore();
+      return readThemePreference(settings, { settingKey: SETTING_KEY, fallback: null });
     };
 
     const applyTheme = (theme) => {
-      root.setAttribute('data-theme', theme);
-      // aria-pressed: true when "dark" (you can invert if you prefer)
-      btn.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
-      btn.title = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+      applyThemePreference({ theme, rootElement: root, toggleElement: btn });
     };
 
-    const initTheme = () => {
-      const saved = getSavedTheme();
-      const theme = saved || getSystemTheme();
-      applyTheme(theme);
+    const initTheme = async () => {
+      applyTheme(getSystemTheme());
+      try {
+        const saved = await getSavedTheme();
+        if (saved) applyTheme(saved);
+      } catch (_err) {
+        applyTheme(getSystemTheme());
+      }
     };
 
-    const toggleTheme = () => {
-      const current = root.getAttribute('data-theme') || getSystemTheme();
-      const next = current === 'dark' ? 'light' : 'dark';
-      localStorage.setItem(STORAGE_KEY, next);
-      applyTheme(next);
+    const toggleTheme = async () => {
+      try {
+        await toggleThemePreference({
+          currentTheme: root.getAttribute('data-theme') || getSystemTheme(),
+          rootElement: root,
+          toggleElement: btn,
+          settingsStore: await getSettingsStore(),
+          settingKey: SETTING_KEY
+        });
+      } catch (_err) {
+        const current = root.getAttribute('data-theme') || getSystemTheme();
+        applyTheme(current === 'dark' ? 'light' : 'dark');
+      }
     };
 
     // Initialize once on load
@@ -244,8 +471,12 @@
     // Optional: If no saved preference, follow system changes live
     const mql = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
     if (mql) {
-      mql.addEventListener('change', () => {
-        if (!getSavedTheme()) applyTheme(getSystemTheme());
+      mql.addEventListener('change', async () => {
+        try {
+          if (!await getSavedTheme()) applyTheme(getSystemTheme());
+        } catch (_err) {
+          applyTheme(getSystemTheme());
+        }
       });
     }
   })();

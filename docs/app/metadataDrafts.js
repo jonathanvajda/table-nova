@@ -2,31 +2,21 @@
  * @file Draft metadata artifact builders for data dictionaries and JSON Schema.
  */
 
+import { serializeDelimitedRecords } from './shared/tabular-io/index.js';
+import {
+  coerceLexicalValueForXsdDatatype,
+  describeXsdDatatypeForJsonSchema,
+  formatDatatypeIriForDisplay
+} from './shared/ontology-utils/index.js';
+
 /**
  * @typedef {import('./rdf/schema.js').ColumnSchema} ColumnSchema
  * @typedef {import('./rdf/buildDataset.js').QuadRecord} QuadRecord
  */
 
-const XSD_NS = 'http://www.w3.org/2001/XMLSchema#';
 const JSON_SCHEMA_DRAFT_2020_12 = 'https://json-schema.org/draft/2020-12/schema';
 const SAMPLE_LIMIT = 5;
 const UNIQUE_EXAMPLE_LIMIT = 2;
-const INTEGER_TYPES = new Set([
-  'byte',
-  'int',
-  'integer',
-  'long',
-  'negativeInteger',
-  'nonNegativeInteger',
-  'nonPositiveInteger',
-  'positiveInteger',
-  'short',
-  'unsignedByte',
-  'unsignedInt',
-  'unsignedLong',
-  'unsignedShort'
-]);
-const NUMBER_TYPES = new Set(['decimal', 'double', 'float']);
 
 /**
  * Builds both draft metadata export artifacts.
@@ -95,7 +85,7 @@ export function buildDataDictionaryRows(columnSchemas, sampleValuesByPredicate) 
   return (columnSchemas || []).map((schema) => ({
     'data identifier': String(schema?.predicateLocalName || ''),
     'field name': String(schema?.label || schema?.originalHeader || schema?.key || ''),
-    datatype: formatDatatypeLabel(schema?.datatypeIri),
+    datatype: formatDatatypeIriForDisplay(schema?.datatypeIri),
     description: '',
     'char length': '',
     format: '',
@@ -119,12 +109,11 @@ export function serializeDataDictionaryCsv(rows) {
     'example'
   ];
 
-  const lines = [
-    headers.map(escapeCsvCell).join(','),
-    ...(rows || []).map((row) => headers.map((key) => escapeCsvCell(row?.[key] || '')).join(','))
-  ];
-
-  return `${lines.join('\n')}\n`;
+  return serializeDelimitedRecords(rows || [], {
+    headers,
+    delimiter: ',',
+    trailingNewline: true
+  });
 }
 
 /**
@@ -139,9 +128,9 @@ export function buildJsonSchemaDocument(filename, columnSchemas, sampleValuesByP
   const properties = {};
 
   for (const schema of columnSchemas || []) {
-    const descriptor = mapXsdDatatypeToJsonSchema(schema?.datatypeIri);
+    const descriptor = describeXsdDatatypeForJsonSchema(schema?.datatypeIri);
     const examples = (sampleValuesByPredicate?.[schema?.predicateIri] || [])
-      .map((value) => coerceExampleValue(value, schema?.datatypeIri))
+      .map((value) => coerceLexicalValueForXsdDatatype(value, schema?.datatypeIri))
       .filter((value) => value !== undefined);
 
     properties[String(schema?.predicateLocalName || schema?.key || 'field')] = {
@@ -201,15 +190,6 @@ function hasSampleValues(sampleValuesByPredicate) {
 }
 
 /**
- * @param {string} value
- * @returns {string}
- */
-function escapeCsvCell(value) {
-  const s = String(value ?? '');
-  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
-/**
  * @param {string[]} values
  * @returns {string}
  */
@@ -219,94 +199,10 @@ function formatExampleCell(values) {
 }
 
 /**
- * @param {string} datatypeIri
- * @returns {string}
- */
-function formatDatatypeLabel(datatypeIri) {
-  const iri = String(datatypeIri || `${XSD_NS}string`);
-  return iri.startsWith(XSD_NS) ? `xsd:${iri.slice(XSD_NS.length)}` : iri;
-}
-
-/**
- * @param {string} datatypeIri
- * @returns {Record<string, any>}
- */
-function mapXsdDatatypeToJsonSchema(datatypeIri) {
-  const local = datatypeLocalName(datatypeIri);
-
-  if (INTEGER_TYPES.has(local)) {
-    return { type: 'integer' };
-  }
-
-  if (NUMBER_TYPES.has(local)) {
-    return { type: 'number' };
-  }
-
-  if (local === 'boolean') {
-    return { type: 'boolean' };
-  }
-
-  if (local === 'date') {
-    return { type: 'string', format: 'date' };
-  }
-
-  if (local === 'dateTime') {
-    return { type: 'string', format: 'date-time' };
-  }
-
-  if (local === 'time') {
-    return { type: 'string', format: 'time' };
-  }
-
-  if (local === 'anyURI') {
-    return { type: 'string', format: 'uri' };
-  }
-
-  return { type: 'string' };
-}
-
-/**
- * @param {string} value
- * @param {string} datatypeIri
- * @returns {string|number|boolean|undefined}
- */
-function coerceExampleValue(value, datatypeIri) {
-  const local = datatypeLocalName(datatypeIri);
-  const trimmed = String(value ?? '').trim();
-  if (!trimmed) return undefined;
-
-  if (INTEGER_TYPES.has(local)) {
-    const parsed = Number(trimmed);
-    return Number.isInteger(parsed) ? parsed : trimmed;
-  }
-
-  if (NUMBER_TYPES.has(local)) {
-    const parsed = Number(trimmed);
-    return Number.isFinite(parsed) ? parsed : trimmed;
-  }
-
-  if (local === 'boolean') {
-    if (trimmed === 'true' || trimmed === '1') return true;
-    if (trimmed === 'false' || trimmed === '0') return false;
-  }
-
-  return trimmed;
-}
-
-/**
  * @param {string} filename
  * @returns {string}
  */
 function buildJsonSchemaTitle(filename) {
   const base = String(filename || 'tabular-source').replace(/\.[^.]+$/, '').trim();
   return base ? `${base} rows` : 'Tabular rows';
-}
-
-/**
- * @param {string} datatypeIri
- * @returns {string}
- */
-function datatypeLocalName(datatypeIri) {
-  const iri = String(datatypeIri || `${XSD_NS}string`);
-  return iri.startsWith(XSD_NS) ? iri.slice(XSD_NS.length) : '';
 }

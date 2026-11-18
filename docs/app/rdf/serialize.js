@@ -1,6 +1,10 @@
 /**
  * @file Serialize RDFJS datasets into Turtle/TriG/N-Triples/N-Quads/JSON-LD.
  */
+import {
+  parseRdfTextWithAdapters,
+  serializeRdfDatasetWithAdapters
+} from '../shared/rdf-io/index.js';
 
 /**
  * Resolve required globals once at module load.
@@ -9,14 +13,14 @@
 const N3 = /** @type {any} */ (globalThis).N3;
 if (!N3) {
   throw new Error(
-    'Global N3 not found. Ensure ./app/imports/n3.min.js is loaded BEFORE your module scripts (e.g., main.js). Expected globalThis.N3.'
+    'Global N3 not found. Ensure ./app/shared/vendor/n3.min.js is loaded BEFORE your module scripts (e.g., main.js). Expected globalThis.N3.'
   );
 }
 
 const JSONLD = /** @type {any} */ (globalThis).jsonld;
 if (!JSONLD) {
   throw new Error(
-    'Global jsonld not found. Ensure ./app/imports/jsonld.min.js is loaded BEFORE your module scripts (e.g., main.js). Expected globalThis.jsonld.'
+    'Global jsonld not found. Ensure ./app/shared/vendor/jsonld.min.js is loaded BEFORE your module scripts (e.g., main.js). Expected globalThis.jsonld.'
   );
 }
 
@@ -53,34 +57,45 @@ export async function datasetToSerializations({ dataset, graphIri, prefixes }) {
     triplesStore.addQuad(DataFactory.quad(q.subject, q.predicate, q.object));
   }
 
-  const turtle = await writeWithN3(triplesStore, { format: 'Turtle', prefixes });
-  const ntriples = await writeWithN3(triplesStore, { format: 'N-Triples' });
+  const turtle = await serializeRdfDatasetText(triplesStore, { format: 'Turtle', prefixes });
+  const ntriples = await serializeRdfDatasetText(triplesStore, { format: 'N-Triples' });
 
-  const trig = await writeWithN3(dataset, { format: 'application/trig', prefixes });
-  const nquads = await writeWithN3(dataset, { format: 'N-Quads' });
+  const trig = await serializeRdfDatasetText(dataset, { format: 'application/trig', prefixes });
+  const nquads = await serializeRdfDatasetText(dataset, { format: 'N-Quads' });
 
-  const jsonldTriples = await rdfToJsonLd(ntriples, false);
-  const jsonldGraph = await rdfToJsonLd(nquads, true, graphIri);
+  const jsonldTriples = await serializeRdfDatasetToJsonLdText(triplesStore);
+  const jsonldGraph = await serializeRdfDatasetToJsonLdText(dataset, graphIri);
 
   return { turtle, trig, ntriples, nquads, jsonldTriples, jsonldGraph };
 }
 
 /**
- * Writes a dataset/store via N3.Writer.
+ * Serializes an RDF/JS dataset/store with the promoted RDF adapter layer.
  * @param {any} store
  * @param {{format: string, prefixes?: Record<string, string>}} options
  * @returns {Promise<string>}
  */
-export function writeWithN3(store, options) {
-  return new Promise((resolve, reject) => {
-    try {
-      const writer = new N3.Writer({ format: options.format, prefixes: options.prefixes });
-      writer.addQuads(store.getQuads(null, null, null, null));
-      writer.end((err, result) => (err ? reject(err) : resolve(String(result || ''))));
-    } catch (err) {
-      reject(err);
-    }
-  });
+export function serializeRdfDatasetText(store, options) {
+  return serializeRdfDatasetWithAdapters(store, {
+    format: options.format,
+    prefixes: options.prefixes || {},
+    runtime: { N3, jsonld: JSONLD }
+  }).then((result) => result.text);
+}
+
+/**
+ * Serializes an RDF/JS dataset/store to JSON-LD without reparsing an
+ * intermediate N-Triples/N-Quads string.
+ * @param {any} store
+ * @param {string} [graphIri]
+ * @returns {Promise<string>}
+ */
+export function serializeRdfDatasetToJsonLdText(store, graphIri) {
+  return serializeRdfDatasetWithAdapters(store, {
+    format: 'jsonld',
+    runtime: { N3, jsonld: JSONLD },
+    ...(graphIri ? { baseIri: graphIri } : {})
+  }).then((result) => result.text);
 }
 
 /**
@@ -92,11 +107,14 @@ export function writeWithN3(store, options) {
  */
 export async function rdfToJsonLd(nquadsOrNtriples, isDataset, graphIri) {
   // jsonld.fromRDF expects N-Quads. For N-Triples, it still works (subset).
-  const doc = await JSONLD.fromRDF(String(nquadsOrNtriples || ''), { format: 'application/n-quads' });
-
-  if (!isDataset) {
-    return JSON.stringify(doc, null, 2);
-  }
-
-  return JSON.stringify(doc, null, 2);
+  const parsed = await parseRdfTextWithAdapters(String(nquadsOrNtriples || ''), {
+    format: isDataset ? 'nquads' : 'ntriples',
+    runtime: { N3, jsonld: JSONLD }
+  });
+  const serialized = await serializeRdfDatasetWithAdapters(parsed.dataset, {
+    format: 'jsonld',
+    runtime: { N3, jsonld: JSONLD },
+    ...(graphIri ? { baseIri: graphIri } : {})
+  });
+  return serialized.text;
 }

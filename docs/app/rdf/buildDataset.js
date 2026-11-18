@@ -2,6 +2,8 @@
  * @file Build RDF datasets from tabular data.
  */
 
+import { COMMON_NAMESPACE_IRIS } from '../shared/namespace-registry/namespace-registry.js';
+
 /**
  * @typedef {import('../state/types.js').FileOptions} FileOptions
  * @typedef {import('../tabular/parseTabular.js').TabularData} TabularData
@@ -56,7 +58,7 @@ export async function buildDatasetFromTabular({
         key,
         index,
         predicateIri: predicateIris[key],
-        datatypeIri: options.datatypesByColumnKey?.[key] || 'http://www.w3.org/2001/XMLSchema#string'
+        datatypeIri: options.datatypesByColumnKey?.[key] || COMMON_NAMESPACE_IRIS.xsd.string
       }));
 
   // Determine data rows (if treatFirstRowAsHeader is false, we re-insert the header row as a data row).
@@ -84,7 +86,7 @@ export async function buildDatasetFromTabular({
       const cell = row[c];
       if (cell === undefined || cell === null || String(cell).trim() === '') continue;
 
-      const datatype = schema.datatypeIri || options.datatypesByColumnKey?.[key] || 'http://www.w3.org/2001/XMLSchema#string';
+      const datatype = schema.datatypeIri || options.datatypesByColumnKey?.[key] || COMMON_NAMESPACE_IRIS.xsd.string;
       const obj = await buildLiteralObject(String(cell), datatype);
 
       const p = DataFactory.namedNode(pIri);
@@ -126,7 +128,7 @@ export async function datasetFromQuads(records) {
 
     const o = rec.oType === 'iri'
       ? DataFactory.namedNode(rec.oValue)
-      : DataFactory.literal(rec.oValue, DataFactory.namedNode(rec.datatypeIri || 'http://www.w3.org/2001/XMLSchema#string'));
+      : DataFactory.literal(rec.oValue, DataFactory.namedNode(rec.datatypeIri || COMMON_NAMESPACE_IRIS.xsd.string));
 
     store.addQuad(DataFactory.quad(s, p, o, g));
   }

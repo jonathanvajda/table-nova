@@ -10,12 +10,16 @@ import {
 } from './ui/telemetry.js';
 import {
   readFileAsArrayBuffer,
+  downloadTextFile,
   readFileAsText
-} from './io/fileReaders.js';
+} from './shared/browser-file-io/index.js';
+import { getMimeTypeForFormatKey } from './shared/format-registry/index.js';
 import {
   applyHeaderRowOptions,
+  parseDelimitedTextAsHeaderRows,
+} from './shared/tabular-io/index.js';
+import {
   detectTabularType,
-  parseCsvOrTsvText,
   parseXlsxArrayBuffer
 } from './tabular/parseTabular.js';
 import {
@@ -26,26 +30,27 @@ import {
 } from './rdf/schema.js';
 import {
   buildOntologyDataset,
+  buildTableNovaOntologyMetadataRecord,
   ontologyRecordsFromDataset
 } from './rdf/ontology.js';
 import {
   rdfToJsonLd,
-  writeWithN3
+  serializeRdfDatasetText
 } from './rdf/serialize.js';
 import {
   buildDraftMetadataArtifacts,
   buildSampleValuesByPredicate
 } from './metadataDrafts.js';
+import { createUuid } from './shared/ontology-utils/index.js';
+import { COMMON_NAMESPACE_IRIS } from './shared/namespace-registry/index.js';
 import {
+  createRunIdFromGraphIri,
   openTableNovaDb,
   putRun,
   listRuns,
   deleteRun,
   getRunDataset
 } from './storage/indexedDb.js';
-import {
-  downloadTextFile
-} from './io/download.js';
 import {
   renderStagedFiles,
   renderFileOptionsPanel,
@@ -97,7 +102,7 @@ let lastOutput = null; // { filename, graphIri, datasets, quadsByScope, views, c
  */
 function toStagedFiles(files) {
   return Array.from(files).map((f) => ({
-    id: crypto.randomUUID(),
+    id: createUuid(),
     file: f,
     options: structuredClone(TABLENOVA_DEFAULTS.fileOptions)
   }));
@@ -157,9 +162,10 @@ async function handlePreviewFile(stagedId) {
     const { file, options } = staged;
     const kind = detectTabularType(file.name);
 
+    // Browser file I/O stops here; CSV/TSV/XLSX parser contracts are a separate capability.
     const tabular = await (kind === 'xlsx'
       ? parseXlsxArrayBuffer(await readFileAsArrayBuffer(file))
-      : parseCsvOrTsvText(await readFileAsText(file), options.delimiterHint));
+      : parseDelimitedTextAsHeaderRows(await readFileAsText(file), options.delimiterHint));
 
     const normalized = normalizeTabularForOptions(tabular, options);
     const preview = normalized.rows.slice(0, 5);
@@ -199,10 +205,13 @@ async function handleRun() {
   await safeAsync(log, async () => {
     const { file, options } = staged;
     const kind = detectTabularType(file.name);
+    const runCreatedAtIso = new Date().toISOString();
+    const runDate = new Date(runCreatedAtIso);
 
+    // Browser file I/O stops here; CSV/TSV/XLSX parser contracts are a separate capability.
     const tabular = await (kind === 'xlsx'
       ? parseXlsxArrayBuffer(await readFileAsArrayBuffer(file))
-      : parseCsvOrTsvText(await readFileAsText(file), options.delimiterHint));
+      : parseDelimitedTextAsHeaderRows(await readFileAsText(file), options.delimiterHint));
 
     const normalized = normalizeTabularForOptions(tabular, options);
 
@@ -223,8 +232,9 @@ async function handleRun() {
     const graphIri = buildRunGraphIri({
       baseRunIri: TABLENOVA_DEFAULTS.baseRunIri,
       filename: file.name,
-      now: new Date()
+      now: runDate
     });
+    const runId = createRunIdFromGraphIri(graphIri);
 
     const { dataset, quads } = await import('./rdf/buildDataset.js').then((m) =>
       m.buildDatasetFromTabular({
@@ -242,6 +252,8 @@ async function handleRun() {
       dataset,
       graphIri,
       filename: file.name,
+      createdAtIso: runCreatedAtIso,
+      runId,
       quads,
       columnSchemas,
       sampleValuesByPredicate
@@ -250,7 +262,7 @@ async function handleRun() {
     await putRun(db, {
       graphIri,
       filename: file.name,
-      createdAtIso: new Date().toISOString(),
+      createdAtIso: runCreatedAtIso,
       quads,
       columnSchemas,
       ontologyTurtle: outputPackage.views.tbox.turtle,
@@ -315,6 +327,8 @@ async function handleLoadRunToOutput(graphIri) {
       dataset,
       graphIri,
       filename: run.filename,
+      createdAtIso: run.createdAtIso || new Date().toISOString(),
+      runId: createRunIdFromGraphIri(graphIri),
       quads: run.quads || [],
       columnSchemas: run.columnSchemas || [],
       sampleValuesByPredicate: run.sampleValuesByPredicate || {}
@@ -470,7 +484,7 @@ function handleExportDataDictionary() {
   downloadTextFile(
     `${buildExportBaseName(lastOutput)}.draft-data-dictionary.csv`,
     draftMetadata.dataDictionaryCsv,
-    'text/csv;charset=utf-8'
+    { mimeType: 'text/csv;charset=utf-8' }
   );
   toasts.show({ title: 'Exported', body: 'Downloaded draft data dictionary.' });
 }
@@ -485,7 +499,7 @@ function handleExportJsonSchema() {
   downloadTextFile(
     `${buildExportBaseName(lastOutput)}.draft-json-schema.json`,
     draftMetadata.jsonSchemaText,
-    'application/schema+json;charset=utf-8'
+    { mimeType: 'application/schema+json;charset=utf-8' }
   );
   toasts.show({ title: 'Exported', body: 'Downloaded draft JSON schema.' });
 }
@@ -518,32 +532,48 @@ function renderCurrentOutputs() {
 }
 
 /**
- * @param {{dataset: any, graphIri: string, filename: string, quads: any[], columnSchemas: any[], sampleValuesByPredicate?: Record<string, string[]>}} params
+ * @param {{dataset: any, graphIri: string, filename: string, createdAtIso: string, runId: string, quads: any[], columnSchemas: any[], sampleValuesByPredicate?: Record<string, string[]>}} params
  * @returns {Promise<any>}
  */
-async function buildOutputPackage({ dataset, graphIri, filename, quads, columnSchemas, sampleValuesByPredicate = {} }) {
+async function buildOutputPackage({ dataset, graphIri, filename, createdAtIso, runId, quads, columnSchemas, sampleValuesByPredicate = {} }) {
   const prefixes = TABLENOVA_DEFAULTS.prefixes;
   const aboxTurtle = await serializeScopeKind(dataset, graphIri, prefixes, 'turtle');
+  const ontologyMetadataRecord = buildTableNovaOntologyMetadataRecord({
+    filename,
+    createdAtIso,
+    runId,
+    baseOntologyIri: TABLENOVA_DEFAULTS.basePredicateIri,
+    localNameStyle: 'PascalCase',
+    language: 'en'
+  });
+  const tboxDataset = buildOntologyDataset(columnSchemas || [], { metadataRecord: ontologyMetadataRecord });
+  const tboxQuads = ontologyRecordsFromDataset(tboxDataset);
+  const tboxTurtle = await serializeScopeKind(tboxDataset, graphIri, prefixes, 'turtle', {
+    metadataRecord: ontologyMetadataRecord
+  });
 
   return {
     filename,
     graphIri,
+    createdAtIso,
+    runId,
     columnSchemas,
     sampleValuesByPredicate,
+    ontologyMetadataRecord,
     prefixes,
     datasets: {
       abox: dataset,
-      tbox: null,
+      tbox: tboxDataset,
       both: null
     },
     quadsByScope: {
       abox: quads || [],
-      tbox: null,
+      tbox: tboxQuads,
       both: null
     },
     views: {
       abox: createEmptyView({ turtle: aboxTurtle }),
-      tbox: createEmptyView(),
+      tbox: createEmptyView({ turtle: tboxTurtle }),
       both: createEmptyView()
     }
   };
@@ -599,42 +629,42 @@ async function ensureViewReady(scope, target) {
 
   if (target === 'turtle') {
     if (view.turtle == null) {
-      view.turtle = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'turtle');
+      view.turtle = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'turtle', getMetadataSerializationOptions(scope));
     }
     return;
   }
 
   if (target === 'ntriples') {
     if (view.ntriples == null) {
-      view.ntriples = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'ntriples');
+      view.ntriples = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'ntriples', getMetadataSerializationOptions(scope));
     }
     return;
   }
 
   if (target === 'jsonld') {
     if (view.jsonldGraph == null) {
-      view.jsonldGraph = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'jsonldGraph');
+      view.jsonldGraph = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'jsonldGraph', getMetadataSerializationOptions(scope));
     }
     return;
   }
 
   if (target === 'trig' && view.trig == null) {
-    view.trig = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'trig');
+    view.trig = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'trig', getMetadataSerializationOptions(scope));
     return;
   }
 
   if (target === 'nquads' && view.nquads == null) {
-    view.nquads = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'nquads');
+    view.nquads = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'nquads', getMetadataSerializationOptions(scope));
     return;
   }
 
   if (target === 'jsonldGraph' && view.jsonldGraph == null) {
-    view.jsonldGraph = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'jsonldGraph');
+    view.jsonldGraph = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'jsonldGraph', getMetadataSerializationOptions(scope));
     return;
   }
 
   if (target === 'jsonldTriples' && view.jsonldTriples == null) {
-    view.jsonldTriples = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'jsonldTriples');
+    view.jsonldTriples = await serializeScopeKind(dataset, lastOutput.graphIri, lastOutput.prefixes, 'jsonldTriples', getMetadataSerializationOptions(scope));
     return;
   }
 
@@ -658,7 +688,9 @@ async function ensureScopeMaterials(scope) {
 
   if (scope === 'tbox') {
     if (!lastOutput.datasets.tbox) {
-      lastOutput.datasets.tbox = buildOntologyDataset(lastOutput.columnSchemas || []);
+      lastOutput.datasets.tbox = buildOntologyDataset(lastOutput.columnSchemas || [], {
+        metadataRecord: lastOutput.ontologyMetadataRecord
+      });
     }
     if (!lastOutput.quadsByScope.tbox) {
       lastOutput.quadsByScope.tbox = ontologyRecordsFromDataset(lastOutput.datasets.tbox);
@@ -690,34 +722,86 @@ async function ensureScopeMaterials(scope) {
  * @param {string} graphIri
  * @param {Record<string, string>} prefixes
  * @param {'turtle'|'trig'|'ntriples'|'nquads'|'jsonldGraph'|'jsonldTriples'} kind
+ * @param {{metadataRecord?: object|null}} [options]
  * @returns {Promise<string>}
  */
-async function serializeScopeKind(dataset, graphIri, prefixes, kind) {
+async function serializeScopeKind(dataset, graphIri, prefixes, kind, options = {}) {
   if (!dataset) return '';
+  const exportDataset = options.metadataRecord
+    ? cloneDatasetWithExportFormat(dataset, options.metadataRecord, getOutputMimeTypeForSerializationKind(kind))
+    : dataset;
 
   if (kind === 'turtle') {
-    return writeWithN3(toTriplesStore(dataset), { format: 'Turtle', prefixes });
+    return serializeRdfDatasetText(toTriplesStore(exportDataset), { format: 'Turtle', prefixes });
   }
 
   if (kind === 'trig') {
-    return writeWithN3(dataset, { format: 'application/trig', prefixes });
+    return serializeRdfDatasetText(exportDataset, { format: 'application/trig', prefixes });
   }
 
   if (kind === 'ntriples') {
-    return writeWithN3(toTriplesStore(dataset), { format: 'N-Triples' });
+    return serializeRdfDatasetText(toTriplesStore(exportDataset), { format: 'N-Triples' });
   }
 
   if (kind === 'nquads') {
-    return writeWithN3(dataset, { format: 'N-Quads' });
+    return serializeRdfDatasetText(exportDataset, { format: 'N-Quads' });
   }
 
   if (kind === 'jsonldTriples') {
-    const ntriples = await writeWithN3(toTriplesStore(dataset), { format: 'N-Triples' });
+    const ntriples = await serializeRdfDatasetText(toTriplesStore(exportDataset), { format: 'N-Triples' });
     return rdfToJsonLd(ntriples, false);
   }
 
-  const nquads = await writeWithN3(dataset, { format: 'N-Quads' });
+  const nquads = await serializeRdfDatasetText(exportDataset, { format: 'N-Quads' });
   return rdfToJsonLd(nquads, true, graphIri);
+}
+
+/**
+ * @param {'turtle'|'trig'|'ntriples'|'nquads'|'jsonldGraph'|'jsonldTriples'} kind
+ * @returns {string}
+ */
+function getOutputMimeTypeForSerializationKind(kind) {
+  const formatKeys = {
+    turtle: 'turtle',
+    trig: 'trig',
+    ntriples: 'n-triples',
+    nquads: 'n-quads',
+    jsonldGraph: 'jsonld',
+    jsonldTriples: 'jsonld'
+  };
+  const result = getMimeTypeForFormatKey(formatKeys[kind]);
+  if (result.ok) return result.value.mimeType;
+  const binary = getMimeTypeForFormatKey('binary');
+  return binary.ok ? binary.value.mimeType : '';
+}
+
+/**
+ * @param {'abox'|'tbox'|'both'} scope
+ * @returns {{metadataRecord?: object|null}}
+ */
+function getMetadataSerializationOptions(scope) {
+  return scope === 'abox' ? {} : { metadataRecord: lastOutput?.ontologyMetadataRecord || null };
+}
+
+/**
+ * @param {any} dataset
+ * @param {object} metadataRecord
+ * @param {string} outputMimeType
+ * @returns {any}
+ */
+function cloneDatasetWithExportFormat(dataset, metadataRecord, outputMimeType) {
+  const N3 = /** @type {any} */ (globalThis).N3;
+  const { DataFactory, Store } = N3;
+  const out = new Store(dataset?.getQuads?.(null, null, null, null) || []);
+  const ontologyIri = String(metadataRecord?.['@id'] || '').trim();
+  if (ontologyIri && outputMimeType) {
+    out.addQuad(
+      DataFactory.namedNode(ontologyIri),
+      DataFactory.namedNode(COMMON_NAMESPACE_IRIS.dcterms.format),
+      DataFactory.literal(outputMimeType, DataFactory.namedNode(COMMON_NAMESPACE_IRIS.xsd.string))
+    );
+  }
+  return out;
 }
 
 /**

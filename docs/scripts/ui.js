@@ -93,22 +93,3 @@ export function renderPartsTable(target, parts) {
     '</table>';
 }
 
-/**
- * Trigger a text download.
- * @param {string} filename
- * @param {string} content
- * @param {string} mimeType
- */
-export function downloadText(filename, content, mimeType) {
-  var blob = new Blob([content], { type: mimeType });
-  var url = URL.createObjectURL(blob);
-
-  var link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-
-  URL.revokeObjectURL(url);
-}

@@ -3,13 +3,18 @@
  */
 
 import { buildColumnSchemas } from '../rdf/schema.js';
+import {
+  COMMON_NAMESPACE_IRIS,
+  compactIriToCurie,
+  namespacePrefixMapFromRegistry
+} from '../shared/namespace-registry/index.js';
 
 /**
  * @typedef {import('../state/types.js').StagedFile} StagedFile
  * @typedef {import('../state/types.js').FileOptions} FileOptions
  */
 
-const XSD = 'http://www.w3.org/2001/XMLSchema#';
+const REGISTERED_PREFIXES = namespacePrefixMapFromRegistry();
 const MIN_PREVIEW_COL_CH = 10;
 const MAX_PREVIEW_COL_CH = 38;
 const ROW_HEADER_COL_CH = 10;
@@ -661,7 +666,7 @@ export function estimatePreviewColumnWidths(colKeys, rows, schemas) {
       textWidthCh(schema?.detectedStyle || ''),
       textWidthCh(schema?.label || ''),
       textWidthCh(schema?.predicateLocalName || ''),
-      textWidthCh(shortDatatypeLabel(schema?.datatypeIri || `${XSD}string`))
+      textWidthCh(shortDatatypeLabel(schema?.datatypeIri || COMMON_NAMESPACE_IRIS.xsd.string))
     );
     const desired = Math.max(headerCh, sampleCh, schemaCh);
     return Math.min(MAX_PREVIEW_COL_CH, Math.max(MIN_PREVIEW_COL_CH, Math.min(desired, maxFromHeader)));
@@ -683,8 +688,8 @@ export function textWidthCh(value) {
  */
 export function shortDatatypeLabel(datatypeIri) {
   const s = String(datatypeIri || '');
-  if (s.startsWith(XSD)) return `xsd:${s.slice(XSD.length)}`;
-  return s;
+  const compact = compactIriToCurie(s, REGISTERED_PREFIXES);
+  return compact.ok ? compact.value : s;
 }
 
 /**
@@ -695,15 +700,15 @@ export function shortDatatypeLabel(datatypeIri) {
 export function buildDatatypeSelect(selected) {
   const sel = document.createElement('select');
   sel.className = 'table-nova-select';
-  sel.appendChild(optionOf(`${XSD}string`, 'xsd:string'));
-  sel.appendChild(optionOf(`${XSD}boolean`, 'xsd:boolean'));
-  sel.appendChild(optionOf(`${XSD}integer`, 'xsd:integer'));
-  sel.appendChild(optionOf(`${XSD}decimal`, 'xsd:decimal'));
-  sel.appendChild(optionOf(`${XSD}double`, 'xsd:double'));
-  sel.appendChild(optionOf(`${XSD}dateTime`, 'xsd:dateTime'));
-  sel.appendChild(optionOf(`${XSD}date`, 'xsd:date'));
-  sel.appendChild(optionOf(`${XSD}anyURI`, 'xsd:anyURI'));
-  sel.value = selected || `${XSD}string`;
+  sel.appendChild(optionOf(COMMON_NAMESPACE_IRIS.xsd.string, 'xsd:string'));
+  sel.appendChild(optionOf(COMMON_NAMESPACE_IRIS.xsd.boolean, 'xsd:boolean'));
+  sel.appendChild(optionOf(COMMON_NAMESPACE_IRIS.xsd.integer, 'xsd:integer'));
+  sel.appendChild(optionOf(COMMON_NAMESPACE_IRIS.xsd.decimal, 'xsd:decimal'));
+  sel.appendChild(optionOf(COMMON_NAMESPACE_IRIS.xsd.double, 'xsd:double'));
+  sel.appendChild(optionOf(COMMON_NAMESPACE_IRIS.xsd.dateTime, 'xsd:dateTime'));
+  sel.appendChild(optionOf(COMMON_NAMESPACE_IRIS.xsd.date, 'xsd:date'));
+  sel.appendChild(optionOf(COMMON_NAMESPACE_IRIS.xsd.anyURI, 'xsd:anyURI'));
+  sel.value = selected || COMMON_NAMESPACE_IRIS.xsd.string;
   return sel;
 }
 
