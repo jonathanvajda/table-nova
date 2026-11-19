@@ -90,6 +90,7 @@ test('buildTableNovaOntologyMetadataRecord creates privacy-safe self-describing 
     runId: 'run:table-nova:test',
     creator: 'Jonathan Vajda',
     contributors: ['Contributor'],
+    propertyLocalNameStyle: 'snake_case',
     outputMimeType: 'text/turtle'
   });
 
@@ -113,4 +114,11 @@ test('buildTableNovaOntologyMetadataRecord creates privacy-safe self-describing 
   expect(record[COMMON_NAMESPACE_IRIS.okea.hasGenerationRunIdentifier]).toEqual([
     { '@value': 'run:table-nova:test' }
   ]);
+  expect(record[COMMON_NAMESPACE_IRIS.okea.hasIriLocalNameStyleTextValue]).toEqual([
+    { '@value': 'snake_case' }
+  ]);
+  expect(record[COMMON_NAMESPACE_IRIS.okea.hasIriLocalNameDelimiterTextValue]).toBeUndefined();
+  expect(record[COMMON_NAMESPACE_IRIS.okea.hasOpaqueIriLocalNamePrefixTextValue]).toBeUndefined();
+  expect(record[COMMON_NAMESPACE_IRIS.okea.hasOpaqueIriLocalNameIntegerWidthValue]).toBeUndefined();
+  expect(record[COMMON_NAMESPACE_IRIS.okea.hasOpaqueIriLocalNameIntegerStartValue]).toBeUndefined();
 });

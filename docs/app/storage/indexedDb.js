@@ -27,6 +27,7 @@ const TABLE_NOVA_RUN_KIND = 'tabular-to-rdf';
  * @property {QuadRecord[]} quads
  * @property {ColumnSchema[]} [columnSchemas]
  * @property {string} [ontologyTurtle]
+ * @property {string} [predicateLocalNameStyle]
  * @property {Record<string, string[]>} [sampleValuesByPredicate]
  */
 
@@ -189,6 +190,7 @@ export function convertTableNovaRunToJsonLd(run) {
       quads: Array.isArray(run.quads) ? run.quads : [],
       columnSchemas: Array.isArray(run.columnSchemas) ? run.columnSchemas : [],
       ontologyTurtle: run.ontologyTurtle || '',
+      predicateLocalNameStyle: run.predicateLocalNameStyle || 'camelCase',
       sampleValuesByPredicate: run.sampleValuesByPredicate || {}
     }
   };
@@ -213,6 +215,7 @@ export function readTableNovaRunFromJsonLd(payload) {
     quads: Array.isArray(value.quads) ? value.quads : [],
     columnSchemas: Array.isArray(value.columnSchemas) ? value.columnSchemas : [],
     ontologyTurtle: value.ontologyTurtle || '',
+    predicateLocalNameStyle: value.predicateLocalNameStyle || 'camelCase',
     sampleValuesByPredicate: value.sampleValuesByPredicate || {}
   };
 }
