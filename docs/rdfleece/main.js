@@ -9,8 +9,9 @@ const dom = {
   preview: $('RDFleecePreview'), schema: $('RDFleeceSchema'), run: $('RDFleeceRun'),
   baseInstance: $('RDFleeceBaseInstance'), basePredicate: $('RDFleeceBasePredicate'),
   prefixHas: $('RDFleecePrefixHas'), casing: $('RDFleeceCasing'), preserveNulls: $('RDFleecePreserveNulls'),
-  scope: $('RDFleeceScope'), format: $('RDFleeceFormat'), output: $('RDFleeceOutput'),
-  status: $('RDFleeceStatus'), download: $('RDFleeceDownload'), exportDictionary: $('RDFleeceDictionary'),
+  scopeInputs: document.querySelectorAll('input[name="RDFleeceOutputScope"]'),
+  formatTabs: document.querySelectorAll('[data-rdfleece-format]'), output: $('RDFleeceOutput'),
+  status: $('RDFleeceStatus'), download: $('RDFleeceDownload'), downloadAlternate: $('RDFleeceDownloadAlternate'), exportDictionary: $('RDFleeceDictionary'),
   exportSchema: $('RDFleeceJsonSchema')
 };
 
@@ -30,9 +31,10 @@ dom.dropzone.addEventListener('drop', (event) => { event.preventDefault(); dom.d
 dom.run.addEventListener('click', generate);
 dom.casing.addEventListener('change', refreshGeneratedPredicateNames);
 dom.prefixHas.addEventListener('change', refreshGeneratedPredicateNames);
-dom.scope.addEventListener('change', renderSelectedOutput);
-dom.format.addEventListener('change', renderSelectedOutput);
-dom.download.addEventListener('click', downloadOutput);
+dom.scopeInputs.forEach((input) => input.addEventListener('change', renderSelectedOutput));
+dom.formatTabs.forEach((tab) => tab.addEventListener('click', () => selectFormatTab(tab)));
+dom.download.addEventListener('click', () => downloadOutput(false));
+dom.downloadAlternate.addEventListener('click', () => downloadOutput(true));
 dom.exportDictionary.addEventListener('click', () => run && downloadTextFile('rdfleece-data-dictionary.csv', run.dataDictionaryCsv, 'text/csv;charset=utf-8'));
 dom.exportSchema.addEventListener('click', () => run && downloadTextFile('rdfleece-schema.json', JSON.stringify(run.jsonSchema, null, 2), 'application/schema+json;charset=utf-8'));
 
@@ -116,20 +118,60 @@ async function generate() {
       serializations[scope] = await datasetToSerializations({ dataset: quadRecordsToN3(records, N3), graphIri: run.graphIri, prefixes: { rdfleece: NS.rdfleece, rdf: NS.rdf, rdfs: NS.rdfs, owl: NS.owl, xsd: NS.xsd, dcterms: NS.dcterms, okea: NS.okea } });
     }
     renderSelectedOutput();
-    [dom.download, dom.exportDictionary, dom.exportSchema].forEach((button) => { button.disabled = false; });
+    [dom.download, dom.downloadAlternate, dom.exportDictionary, dom.exportSchema].forEach((button) => { button.disabled = false; });
+    updateOutputActions();
     setStatus(`Generated ${run.abox.length} ABox and ${run.tbox.length} TBox statements.`, 'ok');
   } catch (error) { setStatus(`Generation failed: ${error.message}`, 'error'); }
 }
 
 function renderSelectedOutput() {
+  const format = getOutputFormat();
+  updateOutputActions();
   if (!run) return;
-  if (dom.format.value === 'shacl') dom.output.value = run.shacl;
-  else dom.output.value = serializations[dom.scope.value]?.[dom.format.value] || '';
+  const scope = getOutputScope();
+  if (format === 'shacl') dom.output.value = run.shacl;
+  else dom.output.value = serializations[scope]?.[format === 'jsonld' ? 'jsonldTriples' : format] || '';
 }
 
-function downloadOutput() {
-  const extensions = { turtle: 'ttl', ntriples: 'nt', jsonldTriples: 'jsonld', shacl: 'ttl' };
-  downloadTextFile(`rdfleece-${dom.format.value === 'shacl' ? 'shapes' : dom.scope.value}.${extensions[dom.format.value]}`, dom.output.value, 'text/plain;charset=utf-8');
+function downloadOutput(alternate) {
+  if (!run) return;
+  const format = getOutputFormat();
+  const scope = getOutputScope();
+  const variants = {
+    turtle: alternate ? ['trig', 'trig'] : ['turtle', 'ttl'],
+    ntriples: alternate ? ['nquads', 'nq'] : ['ntriples', 'nt'],
+    jsonld: alternate ? ['jsonldGraph', 'jsonld'] : ['jsonldTriples', 'jsonld'],
+    shacl: ['shacl', 'ttl']
+  };
+  const [key, extension] = variants[format];
+  const text = key === 'shacl' ? run.shacl : serializations[scope]?.[key] || '';
+  downloadTextFile(`rdfleece-${key === 'shacl' ? 'shapes' : scope}.${extension}`, text, key.startsWith('jsonld') ? 'application/ld+json;charset=utf-8' : 'text/plain;charset=utf-8');
+}
+
+function selectFormatTab(selected) {
+  dom.formatTabs.forEach((tab) => tab.classList.toggle('table-nova-tab--active', tab === selected));
+  renderSelectedOutput();
+}
+
+function getOutputFormat() {
+  return document.querySelector('[data-rdfleece-format].table-nova-tab--active')?.dataset.rdfleeceFormat || 'turtle';
+}
+
+function getOutputScope() {
+  return [...dom.scopeInputs].find((input) => input.checked)?.value || 'abox';
+}
+
+function updateOutputActions() {
+  const format = getOutputFormat();
+  const labels = {
+    turtle: ['Export Turtle', 'Export TriG'],
+    ntriples: ['Export N-Triples', 'Export N-Quads'],
+    jsonld: ['Export JSON-LD triples', 'Export JSON-LD dataset'],
+    shacl: ['Export SHACL', '']
+  };
+  dom.download.textContent = labels[format][0];
+  dom.downloadAlternate.textContent = labels[format][1];
+  dom.downloadAlternate.hidden = format === 'shacl';
 }
 
 function setStatus(message, kind) { dom.status.textContent = message; dom.status.dataset.kind = kind; }

@@ -36,4 +36,5 @@
 .rdfleece-schema td input,.rdfleece-schema td select { min-width:8rem; margin:0; }
 .rdfleece-footer { max-width:min(1600px,calc(100vw - 2rem)); margin:0 auto; padding:1rem 1rem 2rem; color:var(--ont-muted,#555); font-family:var(--ont-font-body,system-ui); font-size:.9rem; text-align:center; }
 .rdfleece-footer p { margin:.2rem 0; }
+.rdfleece-main .table-nova-output-metaexport { margin-left:auto; }
 @media (max-width:760px) { .rdfleece-options-grid,.rdfleece-output-controls { grid-template-columns:1fr; } .rdfleece-main,.rdfleece-footer { max-width:calc(100vw - 1rem); padding-right:.5rem; padding-left:.5rem; } }

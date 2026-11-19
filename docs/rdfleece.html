@@ -77,17 +77,30 @@
 
     <section class="rdfleece-card table-nova-card" aria-labelledby="rdfleece-output-title">
       <h2 id="rdfleece-output-title" class="rdfleece-card__title table-nova-card__title">Output</h2>
-      <div class="rdfleece-output-controls">
-        <div class="rdfleece-field table-nova-field"><label class="rdfleece-label table-nova-label" for="RDFleeceScope">Graph content</label><select id="RDFleeceScope" class="rdfleece-select table-nova-select"><option value="abox">Instance data (ABox)</option><option value="tbox">Ontology schema (TBox)</option><option value="combined">Combined</option></select></div>
-        <div class="rdfleece-field table-nova-field"><label class="rdfleece-label table-nova-label" for="RDFleeceFormat">Serialization</label><select id="RDFleeceFormat" class="rdfleece-select table-nova-select"><option value="turtle">Turtle</option><option value="ntriples">N-Triples</option><option value="jsonldTriples">JSON-LD</option><option value="shacl">SHACL shapes</option></select></div>
+      <nav class="table-nova-tabs table-nova-format-tabs" aria-label="Output format">
+        <button class="table-nova-tab table-nova-tab--active" type="button" data-rdfleece-format="turtle">Turtle</button>
+        <button class="table-nova-tab" type="button" data-rdfleece-format="ntriples">N-Triples</button>
+        <button class="table-nova-tab" type="button" data-rdfleece-format="jsonld">JSON-LD</button>
+        <button class="table-nova-tab" type="button" data-rdfleece-format="shacl">SHACL</button>
+        <div class="table-nova-output-metaexport">
+          <button id="RDFleeceDictionary" class="table-nova-btn table-nova-btn--tertiary" type="button" disabled>Export data dictionary</button>
+          <button id="RDFleeceJsonSchema" class="table-nova-btn table-nova-btn--tertiary" type="button" disabled>Export JSON Schema</button>
+        </div>
+      </nav>
+
+      <fieldset class="table-nova-output-scope" aria-label="Output graph content">
+        <legend class="table-nova-label">Graph content</legend>
+        <label class="table-nova-radiochip"><input type="radio" name="RDFleeceOutputScope" value="abox" checked /><span>Instance data (ABox)</span></label>
+        <label class="table-nova-radiochip"><input type="radio" name="RDFleeceOutputScope" value="tbox" /><span>Ontology schema (TBox)</span></label>
+        <label class="table-nova-radiochip"><input type="radio" name="RDFleeceOutputScope" value="combined" /><span>Combined</span></label>
+      </fieldset>
+
+      <div class="table-nova-output-actions">
+        <button id="RDFleeceDownload" class="table-nova-btn table-nova-btn--tertiary" type="button" disabled>Export Turtle</button>
+        <button id="RDFleeceDownloadAlternate" class="table-nova-btn table-nova-btn--tertiary" type="button" disabled>Export TriG</button>
       </div>
       <label class="rdfleece-label" for="RDFleeceOutput">Generated artifact</label>
       <textarea id="RDFleeceOutput" class="rdfleece-textarea table-nova-textarea" spellcheck="false" readonly></textarea>
-      <div class="rdfleece-output-actions">
-        <button id="RDFleeceDownload" class="rdfleece-btn rdfleece-btn--tertiary table-nova-btn table-nova-btn--tertiary" type="button" disabled>Export selected artifact</button>
-        <button id="RDFleeceDictionary" class="rdfleece-btn rdfleece-btn--tertiary table-nova-btn table-nova-btn--tertiary" type="button" disabled>Export data dictionary</button>
-        <button id="RDFleeceJsonSchema" class="rdfleece-btn rdfleece-btn--tertiary table-nova-btn table-nova-btn--tertiary" type="button" disabled>Export JSON Schema</button>
-      </div>
     </section>
   </main>
 
